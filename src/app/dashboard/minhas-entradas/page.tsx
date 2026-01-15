@@ -412,7 +412,7 @@ export default function MinhasEntradasPage() {
 
       {/* Resumo */}
       <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4">
           <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-4 shadow-sm`}>
             <div className={`text-sm font-medium ${textSecondary}`}>Total de Entradas</div>
             <div className={`mt-2 text-2xl font-semibold ${textPrimary}`}>{totalEntradas}</div>
@@ -433,7 +433,7 @@ export default function MinhasEntradasPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4">
           <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-4 shadow-sm`}>
             <div className={`text-sm font-medium ${textSecondary}`}>Greens</div>
             <div className="mt-2 text-2xl font-semibold text-green-500">{totalGreens}</div>

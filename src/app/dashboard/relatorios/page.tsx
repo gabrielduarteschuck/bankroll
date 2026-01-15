@@ -482,7 +482,7 @@ export default function RelatoriosPage() {
 
       {/* Métricas principais (2 em 2) */}
       <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4">
           <div className={`rounded-xl border ${cardBorder} ${
             theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
           } p-4`}>
@@ -508,7 +508,7 @@ export default function RelatoriosPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4">
           <div className={`rounded-xl border ${cardBorder} ${
             theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
           } p-4`}>

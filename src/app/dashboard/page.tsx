@@ -298,7 +298,7 @@ export default function DashboardHome() {
         </div>
 
         {/* Greens / Reds lado a lado */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-6">
         {/* Total de Entradas */}
         <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
           theme === "dark"
@@ -337,7 +337,7 @@ export default function DashboardHome() {
         </div>
 
         {/* Banca Inicial / Banca Atual lado a lado */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-6">
           <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
             theme === "dark"
               ? "hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20"
@@ -372,7 +372,7 @@ export default function DashboardHome() {
         </div>
 
         {/* Lucro sobre a banca / ROI lado a lado */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-6">
           <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
             lucroBanca >= 0
               ? theme === "dark"
