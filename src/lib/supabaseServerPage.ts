@@ -12,7 +12,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
  * Usamos headers() para obter cookies do Cookie header HTTP
  */
 export async function createSupabaseServerPageClient() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const headersList = await headers();
   
   // Helper para obter todos os cookies do Supabase

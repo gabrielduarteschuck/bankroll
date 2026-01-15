@@ -15,6 +15,8 @@ type Profile = {
   email_confirmed_at: string | null;
 };
 
+type ProfileDbRow = Pick<Profile, "id" | "email" | "role" | "created_at">;
+
 export default function AdminPage() {
   const { theme } = useTheme();
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -94,7 +96,7 @@ export default function AdminPage() {
         .select("id, email, role, created_at")
         .order("created_at", { ascending: false });
       
-      const data = result.data;
+      const data = result.data as ProfileDbRow[] | null;
       const fetchError = result.error;
       
       // Log: Resultado bruto da query do Supabase
@@ -117,7 +119,7 @@ export default function AdminPage() {
       console.log("=== FIM DEBUG ===");
       
       // #region agent log
-      const logQueryResult = {location:'admin/page.tsx:58',message:'profiles query result (client)',data:{hasData:!!data,dataLength:data?.length||0,hasError:!!fetchError,errorMessage:fetchError?.message,firstFew:data?.slice(0,3).map((p:Profile)=>({id:p.id,email:p.email}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'B'};
+      const logQueryResult = {location:'admin/page.tsx:58',message:'profiles query result (client)',data:{hasData:!!data,dataLength:data?.length||0,hasError:!!fetchError,errorMessage:fetchError?.message,firstFew:data?.slice(0,3).map((p)=>({id:p.id,email:p.email,role:p.role,created_at:p.created_at,email_verified:false,email_confirmed_at:null}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'B'};
       fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logQueryResult)}).catch(()=>{});
       // #endregion
 
@@ -136,7 +138,7 @@ export default function AdminPage() {
         
         // Filtrar emails inválidos e tratar null email (caso raro)
         // Ordenar por created_at desc (mais recentes primeiro)
-        const validProfiles = (data as any[])
+        const validProfiles = (data as ProfileDbRow[])
           .filter((p) => {
             // Tratar null email: mostrar como "sem-email@exemplo.com"
             if (!p.email || p.email === 'sem-email@exemplo.com') {
@@ -147,6 +149,8 @@ export default function AdminPage() {
           .map((p) => ({
             ...p,
             email: p.email || 'sem-email@exemplo.com', // Garantir que email nunca seja null
+            role: (p.role === "admin" ? "admin" : "user") as Profile["role"],
+            created_at: p.created_at || "",
             email_verified: false, // Não temos essa info na query direta
             email_confirmed_at: null,
           }))
