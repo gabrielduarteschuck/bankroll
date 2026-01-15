@@ -4,25 +4,27 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
 
-const MERCADOS_NBA = [
-  "Pontos",
-  "Assistências",
-  "Rebotes",
-  "Cestas de 3",
-  "Resultado",
-  "Pontos Totais",
-  "Roubos",
-  "Bloqueios",
-  "Turnovers",
-  "Faltas",
-];
+// 10 esportes mais comuns (ordem de uso), + opção "Outro"
+const ESPORTES_PREDEFINIDOS = [
+  "Futebol",
+  "Basquete (NBA)",
+  "Tênis",
+  "Vôlei",
+  "Futebol Americano (NFL)",
+  "MMA",
+  "Fórmula 1",
+  "Beisebol (MLB)",
+  "Hóquei no Gelo (NHL)",
+  "eSports",
+] as const;
 
 type Entrada = {
   id: string;
   stake_percent: number;
   valor_stake: number;
   odd: number;
-  mercado: string;
+  esporte: string | null;
+  mercado: string | null;
   resultado: "green" | "red" | "pendente";
   valor_resultado: number | null;
   created_at: string;
@@ -43,6 +45,7 @@ export default function MinhasEntradasPage() {
   const { theme } = useTheme();
   const [entradas, setEntradas] = useState<Entrada[]>([]);
   const [entradasFiltradas, setEntradasFiltradas] = useState<Entrada[]>([]);
+  const [paginaAtual, setPaginaAtual] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -63,8 +66,9 @@ export default function MinhasEntradasPage() {
   // Estados para edição
   const [editStake, setEditStake] = useState<string>("");
   const [editOdd, setEditOdd] = useState<string>("");
-  const [editMercado, setEditMercado] = useState<string>("");
-  const [editMercadoCustomizado, setEditMercadoCustomizado] = useState<string>("");
+  const [editEsporte, setEditEsporte] = useState<string>("");
+  const [editEsporteCustomizado, setEditEsporteCustomizado] = useState<string>("");
+  const [editMercadoTexto, setEditMercadoTexto] = useState<string>("");
   const [editResultado, setEditResultado] = useState<"green" | "red" | "pendente">("pendente");
   const [editValorResultado, setEditValorResultado] = useState<string>("");
 
@@ -140,12 +144,14 @@ export default function MinhasEntradasPage() {
   function filtrarEntradas() {
     if (filtroPeriodo === "todos") {
       setEntradasFiltradas(entradas);
+      setPaginaAtual(1);
       return;
     }
 
     const dateRange = getDateRange();
     if (!dateRange) {
       setEntradasFiltradas(entradas);
+      setPaginaAtual(1);
       return;
     }
 
@@ -155,7 +161,15 @@ export default function MinhasEntradasPage() {
     });
 
     setEntradasFiltradas(filtradas);
+    setPaginaAtual(1);
   }
+
+  const ITENS_POR_PAGINA = 20;
+  const totalPaginas = Math.max(1, Math.ceil(entradasFiltradas.length / ITENS_POR_PAGINA));
+  const paginaSegura = Math.min(Math.max(1, paginaAtual), totalPaginas);
+  const inicio = (paginaSegura - 1) * ITENS_POR_PAGINA;
+  const fim = inicio + ITENS_POR_PAGINA;
+  const entradasPaginadas = entradasFiltradas.slice(inicio, fim);
 
   async function loadEntradas() {
     try {
@@ -194,8 +208,10 @@ export default function MinhasEntradasPage() {
     setEditingId(entrada.id);
     setEditStake(entrada.stake_percent.toString());
     setEditOdd(entrada.odd.toString());
-    setEditMercado(MERCADOS_NBA.includes(entrada.mercado) ? entrada.mercado : "outros");
-    setEditMercadoCustomizado(MERCADOS_NBA.includes(entrada.mercado) ? "" : entrada.mercado);
+    const esporteValue = entrada.esporte || "Basquete (NBA)";
+    setEditEsporte(ESPORTES_PREDEFINIDOS.includes(esporteValue as any) ? esporteValue : "outros");
+    setEditEsporteCustomizado(ESPORTES_PREDEFINIDOS.includes(esporteValue as any) ? "" : esporteValue);
+    setEditMercadoTexto(entrada.mercado || "");
     setEditResultado(entrada.resultado);
     setEditValorResultado(entrada.valor_resultado?.toString() || "");
   }
@@ -204,8 +220,9 @@ export default function MinhasEntradasPage() {
     setEditingId(null);
     setEditStake("");
     setEditOdd("");
-    setEditMercado("");
-    setEditMercadoCustomizado("");
+    setEditEsporte("");
+    setEditEsporteCustomizado("");
+    setEditMercadoTexto("");
     setEditResultado("pendente");
     setEditValorResultado("");
   }
@@ -226,7 +243,9 @@ export default function MinhasEntradasPage() {
 
       const stakeValue = parseFloat(editStake.replace(",", "."));
       const oddValue = parseFloat(editOdd.replace(",", "."));
-      const mercadoFinal = editMercado === "outros" ? editMercadoCustomizado : editMercado;
+      const esporteFinal =
+        editEsporte === "outros" ? editEsporteCustomizado.trim() : editEsporte.trim();
+      const mercadoFinal = editMercadoTexto.trim() ? editMercadoTexto.trim() : null;
       const valorResultadoFinal = editValorResultado
         ? parseFloat(editValorResultado.replace(",", "."))
         : null;
@@ -243,8 +262,8 @@ export default function MinhasEntradasPage() {
         return;
       }
 
-      if (!mercadoFinal || mercadoFinal.trim() === "") {
-        alert("Mercado inválido");
+      if (!esporteFinal) {
+        alert("Esporte inválido");
         setSaving(false);
         return;
       }
@@ -272,6 +291,7 @@ export default function MinhasEntradasPage() {
           stake_percent: stakeValue,
           valor_stake: novoValorApostado,
           odd: oddValue,
+          esporte: esporteFinal,
           mercado: mercadoFinal,
           resultado: editResultado,
           valor_resultado: novoValorResultado,
@@ -511,7 +531,7 @@ export default function MinhasEntradasPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {entradasFiltradas.map((entrada) => (
+          {entradasPaginadas.map((entrada) => (
             <div
               key={entrada.id}
               className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-sm`}
@@ -550,34 +570,47 @@ export default function MinhasEntradasPage() {
                     </div>
                     <div>
                       <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
-                        Mercado
+                        Esporte
                       </label>
                       <select
-                        value={editMercado}
+                        value={editEsporte}
                         onChange={(e) => {
-                          setEditMercado(e.target.value);
+                          setEditEsporte(e.target.value);
                           if (e.target.value !== "outros") {
-                            setEditMercadoCustomizado("");
+                            setEditEsporteCustomizado("");
                           }
                         }}
                         className={`w-full p-2 rounded border ${inputBorder} ${inputBg} text-sm ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
                       >
-                        {MERCADOS_NBA.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
+                        {ESPORTES_PREDEFINIDOS.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
                           </option>
                         ))}
-                        <option value="outros">Outros</option>
+                        <option value="outros">Outro</option>
                       </select>
-                      {editMercado === "outros" && (
+                      {editEsporte === "outros" && (
                         <input
                           type="text"
-                          placeholder="Digite o mercado"
-                          value={editMercadoCustomizado}
-                          onChange={(e) => setEditMercadoCustomizado(e.target.value)}
+                          placeholder="Digite o esporte"
+                          value={editEsporteCustomizado}
+                          onChange={(e) => setEditEsporteCustomizado(e.target.value)}
                           className={`w-full mt-2 p-2 rounded border ${inputBorder} ${inputBg} text-sm ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
                         />
                       )}
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
+                        Mercado (opcional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Ambas marcam, Over 2.5, Handicap..."
+                        value={editMercadoTexto}
+                        onChange={(e) => setEditMercadoTexto(e.target.value)}
+                        className={`w-full p-2 rounded border ${inputBorder} ${inputBg} text-sm ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
+                      />
                     </div>
                     <div>
                       <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
@@ -645,8 +678,13 @@ export default function MinhasEntradasPage() {
                         {formatDate(entrada.created_at)}
                       </div>
                       <div className={`text-sm font-medium ${textPrimary}`}>
-                        Mercado: {entrada.mercado}
+                        Esporte: {entrada.esporte || "—"}
                       </div>
+                      {entrada.mercado ? (
+                        <div className={`text-xs ${textSecondary} mt-1`}>
+                          Mercado: {entrada.mercado}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -724,6 +762,73 @@ export default function MinhasEntradasPage() {
               )}
             </div>
           ))}
+
+          {/* Paginação (20 por página) */}
+          {totalPaginas > 1 && (
+            <div className={`mt-6 rounded-xl border ${cardBorder} ${cardBg} p-4`}>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
+                  disabled={paginaSegura === 1}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    paginaSegura === 1
+                      ? "opacity-60 cursor-not-allowed"
+                      : "cursor-pointer"
+                  } ${
+                    theme === "dark"
+                      ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                  }`}
+                >
+                  ←
+                </button>
+
+                {Array.from({ length: totalPaginas }).map((_, idx) => {
+                  const page = idx + 1;
+                  const label = page.toString().padStart(2, "0");
+                  return (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setPaginaAtual(page)}
+                      className={`px-3 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors ${
+                        page === paginaSegura
+                          ? theme === "dark"
+                            ? "bg-zinc-700 text-white"
+                            : "bg-zinc-900 text-white"
+                          : theme === "dark"
+                          ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                          : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
+                  disabled={paginaSegura === totalPaginas}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    paginaSegura === totalPaginas
+                      ? "opacity-60 cursor-not-allowed"
+                      : "cursor-pointer"
+                  } ${
+                    theme === "dark"
+                      ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                  }`}
+                >
+                  →
+                </button>
+              </div>
+              <div className={`mt-2 text-center text-xs ${textTertiary}`}>
+                Mostrando {inicio + 1}–{Math.min(fim, entradasFiltradas.length)} de {entradasFiltradas.length}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

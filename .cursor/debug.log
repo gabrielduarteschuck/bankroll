@@ -597,3 +597,6 @@
 {"location":"login/page.tsx:17","message":"handleLogin entry","data":{"email":"gabrielteste02@gmail.com"},"timestamp":1768494144844,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
 {"location":"login/page.tsx:27","message":"signInWithPassword result","data":{"hasError":true,"hasSession":false,"errorMessage":"Email not confirmed"},"timestamp":1768494145229,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
 {"location":"login/page.tsx:30","message":"login error branch","data":{"errorMessage":"Email not confirmed"},"timestamp":1768494145229,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"login/page.tsx:17","message":"handleLogin entry","data":{"email":"duarte.schuck@icloud.com"},"timestamp":1768503287254,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"login/page.tsx:27","message":"signInWithPassword result","data":{"hasError":false,"hasSession":true},"timestamp":1768503287784,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"login/page.tsx:35","message":"login success - before redirect","data":{"hasSession":true},"timestamp":1768503287784,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}

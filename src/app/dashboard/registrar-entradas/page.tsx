@@ -5,18 +5,20 @@ import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const STAKES_PREDEFINIDAS = [0.2, 0.5, 1, 2, 5];
-const MERCADOS_NBA = [
-  "Pontos",
-  "Assistências",
-  "Rebotes",
-  "Cestas de 3",
-  "Resultado",
-  "Pontos Totais",
-  "Roubos",
-  "Bloqueios",
-  "Turnovers",
-  "Faltas",
-];
+
+// 10 esportes mais comuns (ordem de uso), + opção "Outro"
+const ESPORTES_PREDEFINIDOS = [
+  "Futebol",
+  "Basquete (NBA)",
+  "Tênis",
+  "Vôlei",
+  "Futebol Americano (NFL)",
+  "MMA",
+  "Fórmula 1",
+  "Beisebol (MLB)",
+  "Hóquei no Gelo (NHL)",
+  "eSports",
+] as const;
 
 export default function RegistrarEntradasPage() {
   const { theme } = useTheme();
@@ -25,9 +27,12 @@ export default function RegistrarEntradasPage() {
   const [stakeSelecionada, setStakeSelecionada] = useState<string>("");
   const [stakeCustomizada, setStakeCustomizada] = useState<string>("");
   const [odd, setOdd] = useState<string>("");
-  const [mercado, setMercado] = useState<string>("");
-  const [mercadoCustomizado, setMercadoCustomizado] = useState<string>("");
-  const [mostrarMercado, setMostrarMercado] = useState<boolean>(false);
+  const [esporte, setEsporte] = useState<string>("");
+  const [esporteCustomizado, setEsporteCustomizado] = useState<string>("");
+  const [mostrarEsporte, setMostrarEsporte] = useState<boolean>(false);
+  const [mercadoTexto, setMercadoTexto] = useState<string>("");
+  const [sugestoesMercado, setSugestoesMercado] = useState<string[]>([]);
+  const [loadingSugestoes, setLoadingSugestoes] = useState<boolean>(false);
   const [resultado, setResultado] = useState<"green" | "red" | "">("");
   const [valorApostado, setValorApostado] = useState<number>(0);
   const [valorResultado, setValorResultado] = useState<number>(0);
@@ -53,6 +58,60 @@ export default function RegistrarEntradasPage() {
   useEffect(() => {
     calculateValues();
   }, [bancaInicial, stakeSelecionada, stakeCustomizada, odd, resultado]);
+
+  useEffect(() => {
+    // Carrega sugestões de mercado quando o esporte muda
+    loadSugestoesMercado();
+    // Limpa o mercado ao trocar esporte para não “vazar” de outro esporte
+    setMercadoTexto("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esporte, esporteCustomizado]);
+
+  function esporteFinalValue() {
+    return esporte === "outros" ? esporteCustomizado.trim() : esporte.trim();
+  }
+
+  async function loadSugestoesMercado() {
+    const esporteFinal = esporteFinalValue();
+    if (!esporteFinal) {
+      setSugestoesMercado([]);
+      return;
+    }
+
+    setLoadingSugestoes(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("mercados_sugeridos")
+        .select("mercado")
+        .eq("user_id", user.id)
+        .eq("esporte", esporteFinal)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (error) {
+        // Se a migração não foi aplicada ainda, não quebra a tela
+        setSugestoesMercado([]);
+        return;
+      }
+
+      const unique = Array.from(
+        new Set(
+          (data || [])
+            .map((r: any) => String(r.mercado || "").trim())
+            .filter(Boolean)
+        )
+      );
+      setSugestoesMercado(unique);
+    } finally {
+      setLoadingSugestoes(false);
+    }
+  }
 
   async function loadBanca() {
     try {
@@ -222,9 +281,15 @@ export default function RegistrarEntradasPage() {
         return;
       }
 
-      // Determina o mercado (selecionado ou customizado) - pode ser null
-      const mercadoFinal =
-        mercado === "outros" ? mercadoCustomizado : mercado === "" ? null : mercado;
+      const esporteFinal = esporteFinalValue();
+      if (!esporteFinal) {
+        alert("Por favor, selecione um esporte");
+        setLoading(false);
+        return;
+      }
+
+      // Mercado é OPCIONAL
+      const mercadoFinal = mercadoTexto.trim() ? mercadoTexto.trim() : null;
 
       // Salva a entrada no banco de dados
       const { error: insertError } = await supabase.from("entradas").insert({
@@ -232,7 +297,8 @@ export default function RegistrarEntradasPage() {
         stake_percent: percentStake,
         valor_stake: valorApostado,
         odd: oddValue,
-        mercado: mercadoFinal || null,
+        esporte: esporteFinal,
+        mercado: mercadoFinal,
         resultado: resultado,
         valor_resultado: valorResultado,
       });
@@ -248,6 +314,18 @@ export default function RegistrarEntradasPage() {
             `2. Vá em "SQL Editor"\n` +
             `3. Execute o arquivo "CRIAR-TUDO.sql"\n\n` +
             `Este script cria a tabela com todos os campos necessários!`
+          );
+        } else if (
+          (insertError.message.includes("esporte") && insertError.message.includes("column")) ||
+          insertError.message.includes("esporte does not exist")
+        ) {
+          alert(
+            `❌ Coluna 'esporte' não encontrada na tabela 'entradas'!\n\n` +
+            `📋 Para resolver:\n` +
+            `1. Acesse: https://supabase.com/dashboard\n` +
+            `2. Vá em \"SQL Editor\"\n` +
+            `3. Execute a migration \"0009_esporte_e_sugestoes_mercado.sql\" (pasta supabase/migrations)\n\n` +
+            `Isso adiciona a coluna 'esporte' e cria a tabela de sugestões.`
           );
         } else if (insertError.message.includes("mercado") || insertError.message.includes("column") && insertError.message.includes("mercado")) {
           alert(
@@ -268,19 +346,36 @@ export default function RegistrarEntradasPage() {
         return;
       }
 
+      // Salva sugestão de mercado por esporte (best-effort)
+      if (mercadoFinal) {
+        try {
+          await supabase
+            .from("mercados_sugeridos")
+            .upsert(
+              { user_id: user.id, esporte: esporteFinal, mercado: mercadoFinal },
+              { onConflict: "user_id,esporte,mercado", ignoreDuplicates: true }
+            );
+        } catch {
+          // ignore
+        }
+      }
+
       // Limpa o formulário ANTES de mostrar o alert
       setStakeSelecionada("");
       setStakeCustomizada("");
       setOdd("");
-      setMercado("");
-      setMercadoCustomizado("");
-      setMostrarMercado(false);
+      setEsporte("");
+      setEsporteCustomizado("");
+      setMercadoTexto("");
+      setSugestoesMercado([]);
       setResultado("");
       setValorApostado(0);
       setValorResultado(0);
 
       alert(
         `✅ Entrada registrada com sucesso!\n\n` +
+        `Esporte: ${esporteFinal}\n` +
+        (mercadoFinal ? `Mercado: ${mercadoFinal}\n` : "") +
         `Stake: ${percentStake}%\n` +
         `Valor Apostado: R$ ${valorApostado.toLocaleString("pt-BR", {
           minimumFractionDigits: 2,
@@ -453,29 +548,31 @@ export default function RegistrarEntradasPage() {
               />
             </div>
 
-            {/* Mercado - Botão Interativo */}
+            {/* Esporte */}
             <div>
               <button
                 type="button"
-                onClick={() => setMostrarMercado(!mostrarMercado)}
-                className={`w-full p-3 rounded-lg border-2 transition-colors ${
-                  mostrarMercado
-                    ? theme === "dark" 
-                      ? "border-zinc-600 bg-zinc-800" 
+                onClick={() => setMostrarEsporte((v) => !v)}
+                className={`w-full p-3 rounded-lg border-2 transition-colors cursor-pointer ${
+                  mostrarEsporte
+                    ? theme === "dark"
+                      ? "border-zinc-600 bg-zinc-800"
                       : "border-zinc-400 bg-zinc-50"
                     : `${cardBorder} ${cardBg} ${hoverBg}`
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span className={`text-sm font-medium ${textPrimary}`}>
-                    Mercado Utilizado
+                    Selecionar esporte
                   </span>
                   <span className={`text-xs ${textTertiary}`}>
-                    {mercado ? `✓ ${mercado === "outros" ? mercadoCustomizado : mercado}` : "Clique para selecionar"}
+                    {esporteFinalValue()
+                      ? `✓ ${esporteFinalValue()}`
+                      : "Clique para selecionar"}
                   </span>
                   <svg
                     className={`w-5 h-5 ${textTertiary} transition-transform ${
-                      mostrarMercado ? "rotate-180" : ""
+                      mostrarEsporte ? "rotate-180" : ""
                     }`}
                     fill="none"
                     stroke="currentColor"
@@ -491,66 +588,57 @@ export default function RegistrarEntradasPage() {
                 </div>
               </button>
 
-              {mostrarMercado && (
+              {mostrarEsporte && (
                 <div className={`mt-3 space-y-2 p-4 rounded-lg border ${cardBorder} ${infoBg}`}>
-                  {MERCADOS_NBA.map((mercadoOption) => (
+                  {ESPORTES_PREDEFINIDOS.map((sport) => (
                     <label
-                      key={mercadoOption}
-                      className={`flex items-center p-3 rounded-lg border ${cardBorder} ${cardBg} cursor-pointer ${hoverBg} transition-colors`}
+                      key={sport}
+                      className={`flex items-center p-3 rounded-lg border ${cardBorder} cursor-pointer ${hoverBg} transition-colors`}
                     >
                       <input
                         type="radio"
-                        name="mercado"
-                        value={mercadoOption}
-                        checked={mercado === mercadoOption}
+                        name="esporte"
+                        value={sport}
+                        checked={esporte === sport}
                         onChange={(e) => {
-                          setMercado(e.target.value);
-                          setMercadoCustomizado("");
-                          // Fecha o menu quando seleciona um mercado pré-definido
-                          setMostrarMercado(false);
+                          setEsporte(e.target.value);
+                          setEsporteCustomizado("");
+                          setMostrarEsporte(false);
                         }}
                         className="mr-3"
                       />
-                      <div className={`text-sm font-medium ${textPrimary}`}>
-                        {mercadoOption}
-                      </div>
+                      <div className={`text-sm font-medium ${textPrimary}`}>{sport}</div>
                     </label>
                   ))}
 
-                  {/* Opção outros */}
-                  <label className={`flex items-center p-3 rounded-lg border ${cardBorder} ${cardBg} cursor-pointer ${hoverBg} transition-colors`}>
+                  <label className={`flex items-center p-3 rounded-lg border ${cardBorder} cursor-pointer ${hoverBg} transition-colors`}>
                     <input
                       type="radio"
-                      name="mercado"
+                      name="esporte"
                       value="outros"
-                      checked={mercado === "outros"}
+                      checked={esporte === "outros"}
                       onChange={(e) => {
-                        setMercado(e.target.value);
-                        // Mantém aberto para digitar
+                        setEsporte(e.target.value);
+                        // mantém aberto para digitar
                       }}
                       className="mr-3"
                     />
                     <div className="flex-1">
-                      <div className={`text-sm font-medium ${textPrimary} mb-1`}>
-                        Outros
-                      </div>
-                      {mercado === "outros" && (
+                      <div className={`text-sm font-medium ${textPrimary} mb-1`}>Outro</div>
+                      {esporte === "outros" && (
                         <div className="space-y-2">
                           <input
                             type="text"
-                            placeholder="Digite o mercado utilizado"
-                            value={mercadoCustomizado}
-                            onChange={(e) => setMercadoCustomizado(e.target.value)}
+                            placeholder="Digite o esporte"
+                            value={esporteCustomizado}
+                            onChange={(e) => setEsporteCustomizado(e.target.value)}
                             className={`w-full p-2 rounded border ${inputBorder} ${inputBg} text-sm ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
-                            required={mercado === "outros"}
                           />
-                          {mercadoCustomizado && (
+                          {esporteCustomizado.trim() ? (
                             <button
                               type="button"
-                              onClick={() => {
-                                setMostrarMercado(false);
-                              }}
-                              className={`w-full px-3 py-2 rounded text-sm font-medium transition-colors ${
+                              onClick={() => setMostrarEsporte(false)}
+                              className={`w-full px-3 py-2 rounded text-sm font-medium cursor-pointer transition-colors ${
                                 theme === "dark"
                                   ? "bg-zinc-700 text-white hover:bg-zinc-600"
                                   : "bg-zinc-900 text-white hover:bg-zinc-800"
@@ -558,11 +646,58 @@ export default function RegistrarEntradasPage() {
                             >
                               Confirmar
                             </button>
-                          )}
+                          ) : null}
                         </div>
                       )}
                     </div>
                   </label>
+                </div>
+              )}
+            </div>
+
+            {/* Mercado (opcional) + sugestões por esporte */}
+            <div>
+              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+                Mercado Utilizado <span className={`${textTertiary}`}>(opcional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder={esporteFinalValue() ? "Ex: Ambas marcam, Handicap, Over 2.5..." : "Selecione um esporte primeiro"}
+                value={mercadoTexto}
+                onChange={(e) => setMercadoTexto(e.target.value)}
+                disabled={!esporteFinalValue()}
+                list="mercado-sugestoes"
+                className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent disabled:opacity-60`}
+              />
+              <datalist id="mercado-sugestoes">
+                {sugestoesMercado.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+
+              {esporteFinalValue() && (
+                <div className="mt-2">
+                  <div className={`text-xs ${textTertiary}`}>
+                    {loadingSugestoes ? "Carregando sugestões..." : sugestoesMercado.length > 0 ? "Sugestões:" : "Sem sugestões ainda — ao registrar, salvamos como sugestão."}
+                  </div>
+                  {sugestoesMercado.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {sugestoesMercado.slice(0, 10).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setMercadoTexto(m)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                            theme === "dark"
+                              ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                              : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
