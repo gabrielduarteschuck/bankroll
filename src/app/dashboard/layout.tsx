@@ -76,11 +76,6 @@ export default function DashboardLayout({
       <div className={`md:hidden flex items-center justify-between p-4 border-b ${
         theme === "dark" ? "border-zinc-800 bg-zinc-900" : "border-zinc-200 bg-white"
       }`}>
-        <div className={`text-sm font-semibold ${
-          theme === "dark" ? "text-white" : "text-zinc-900"
-        }`}>
-          VDT Dashboard
-        </div>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className={`p-2 rounded-lg ${
@@ -98,6 +93,11 @@ export default function DashboardLayout({
             </svg>
           )}
         </button>
+        <div className={`text-sm font-semibold ${
+          theme === "dark" ? "text-white" : "text-zinc-900"
+        }`}>
+          VDT Dashboard
+        </div>
       </div>
 
       {/* Mobile Menu Overlay */}

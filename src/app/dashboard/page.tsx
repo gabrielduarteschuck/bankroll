@@ -23,10 +23,9 @@ export default function DashboardHome() {
   const [lucroBanca, setLucroBanca] = useState(0);
   const [roi, setRoi] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("30dias");
+  const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("7dias");
   const [dataInicio, setDataInicio] = useState<string>("");
   const [dataFim, setDataFim] = useState<string>("");
-  const [sequenciasGreens, setSequenciasGreens] = useState<number[]>([]);
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -98,34 +97,6 @@ export default function DashboardHome() {
     return { inicio: inicio.toISOString(), fim: fim.toISOString() };
   }
 
-  function calcularSequenciasGreens(entradas: any[]) {
-    const sequencias: number[] = [];
-    let sequenciaAtual = 0;
-
-    // Ordena por data (mais antiga primeiro) para calcular sequências
-    const entradasOrdenadas = [...entradas].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-
-    for (const entrada of entradasOrdenadas) {
-      if (entrada.resultado === "green") {
-        sequenciaAtual++;
-      } else if (entrada.resultado === "red") {
-        if (sequenciaAtual > 0) {
-          sequencias.push(sequenciaAtual);
-          sequenciaAtual = 0;
-        }
-      }
-    }
-
-    // Adiciona a última sequência se terminar em green
-    if (sequenciaAtual > 0) {
-      sequencias.push(sequenciaAtual);
-    }
-
-    return sequencias.sort((a, b) => b - a); // Ordena do maior para o menor
-  }
-
   async function loadData() {
     try {
       const {
@@ -181,10 +152,6 @@ export default function DashboardHome() {
 
         setGreens(greensCount);
         setReds(redsCount);
-
-        // Calcula sequências de greens
-        const sequencias = calcularSequenciasGreens(entradasData);
-        setSequenciasGreens(sequencias);
 
         // Calcula banca atual (banca inicial + soma dos resultados)
         const somaResultados = entradasData.reduce((acc, entrada) => {
@@ -263,130 +230,76 @@ export default function DashboardHome() {
         </p>
       </div>
 
-      {/* Filtros de Período */}
+      {/* Filtro (uma opção) */}
       <div className={`rounded-xl border ${cardBorder} ${cardBg} p-4`}>
         <div className="flex flex-wrap items-center gap-3">
-          <span className={`text-sm font-medium ${textSecondary}`}>Período:</span>
-          {(["hoje", "ontem", "7dias", "15dias", "30dias", "60dias", "90dias"] as FiltroPeriodo[]).map((periodo) => (
-            <button
-              key={periodo}
-              onClick={() => {
-                setFiltroPeriodo(periodo);
+          <span className={`text-sm font-medium ${textSecondary}`}>Período</span>
+          <select
+            value={filtroPeriodo}
+            onChange={(e) => {
+              const value = e.target.value as FiltroPeriodo;
+              setFiltroPeriodo(value);
+              if (value !== "personalizado") {
                 setDataInicio("");
                 setDataFim("");
-              }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                filtroPeriodo === periodo
-                  ? theme === "dark"
-                    ? "bg-zinc-700 text-white"
-                    : "bg-zinc-900 text-white"
-                  : theme === "dark"
-                  ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-              }`}
-            >
-              {periodo === "hoje" && "Hoje"}
-              {periodo === "ontem" && "Ontem"}
-              {periodo === "7dias" && "7 dias"}
-              {periodo === "15dias" && "15 dias"}
-              {periodo === "30dias" && "30 dias"}
-              {periodo === "60dias" && "60 dias"}
-              {periodo === "90dias" && "90 dias"}
-            </button>
-          ))}
-          <button
-            onClick={() => setFiltroPeriodo("personalizado")}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              filtroPeriodo === "personalizado"
-                ? theme === "dark"
-                  ? "bg-zinc-700 text-white"
-                  : "bg-zinc-900 text-white"
-                : theme === "dark"
-                ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-            }`}
+              }
+            }}
+            className={`px-3 py-2 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
           >
-            Personalizado
-          </button>
+            <option value="hoje">Hoje</option>
+            <option value="ontem">Ontem</option>
+            <option value="7dias">Últimos 7 dias</option>
+            <option value="15dias">Últimos 15 dias</option>
+            <option value="30dias">Últimos 30 dias</option>
+            <option value="60dias">Últimos 60 dias</option>
+            <option value="90dias">Últimos 90 dias</option>
+            <option value="personalizado">Personalizado</option>
+          </select>
+
           {filtroPeriodo === "personalizado" && (
-            <div className="flex items-center gap-2 ml-2">
+            <div className="flex items-center gap-2">
               <input
                 type="date"
                 value={dataInicio}
                 onChange={(e) => setDataInicio(e.target.value)}
-                className={`px-3 py-1.5 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
-                placeholder="Data inicial"
+                className={`px-3 py-2 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
               />
               <span className={textTertiary}>até</span>
               <input
                 type="date"
                 value={dataFim}
                 onChange={(e) => setDataFim(e.target.value)}
-                className={`px-3 py-1.5 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
-                placeholder="Data final"
+                className={`px-3 py-2 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
               />
             </div>
           )}
         </div>
       </div>
 
-      {/* Sequências de Greens - Movida para cima e animada */}
-      {sequenciasGreens.length > 0 && (
-        <div className={`rounded-xl border ${cardBorder} ${cardBg} p-4 animate-fade-in-down`}>
-          <div className={`text-sm font-semibold mb-3 ${textPrimary}`}>
-            Sequências de Greens
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {sequenciasGreens.slice(0, 10).map((seq, index) => (
-              <div
-                key={index}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 ease-out hover:scale-105 cursor-default animate-fade-in-left ${
-                  theme === "dark"
-                    ? "bg-green-900/30 border border-green-800 text-green-400 hover:bg-green-900/40 hover:border-green-700"
-                    : "bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 hover:border-green-300"
-                }`}
-                style={{
-                  animationDelay: `${index * 50}ms`,
-                  animationFillMode: "both"
-                }}
-              >
-                {seq} {seq === 1 ? "green" : "greens"}
-              </div>
-            ))}
-            {sequenciasGreens.length > 10 && (
-              <div className={`px-3 py-1.5 rounded-lg text-sm font-medium ${textTertiary}`}>
-                +{sequenciasGreens.length - 10} mais
-              </div>
-            )}
-          </div>
-          {sequenciasGreens.length > 0 && (
-            <div className={`mt-2 text-xs ${textTertiary}`}>
-              Maior sequência: <span className="font-semibold text-green-500">{sequenciasGreens[0]}</span> {sequenciasGreens[0] === 1 ? "green" : "greens"}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Cards Grid */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      {/* Cards (ordem e compactação pedidas) */}
+      <div className="space-y-6">
         {/* Total de Entradas */}
-        <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
-          theme === "dark" 
-            ? "hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20" 
-            : "hover:border-zinc-300 hover:shadow-md"
-        }`}>
-          <div className="flex items-start justify-between mb-4">
-            <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
-              Total de Entradas
+        <div className="grid grid-cols-1">
+          <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
+            theme === "dark" 
+              ? "hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20" 
+              : "hover:border-zinc-300 hover:shadow-md"
+          }`}>
+            <div className="flex items-start justify-between mb-4">
+              <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
+                Total de Entradas
+              </div>
             </div>
+            <div className={`text-4xl font-bold mb-2 ${textPrimary}`}>
+              {totalEntradas.toLocaleString("pt-BR")}
+            </div>
+            <div className={`text-xs ${textTertiary}`}>Operações realizadas</div>
           </div>
-          <div className={`text-4xl font-bold mb-2 ${textPrimary}`}>
-            {totalEntradas.toLocaleString("pt-BR")}
-          </div>
-          <div className={`text-xs ${textTertiary}`}>Operações realizadas</div>
         </div>
 
-        {/* Greens */}
+        {/* Greens / Reds lado a lado */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {/* Total de Entradas */}
         <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
           theme === "dark"
             ? "hover:border-green-500/30 hover:shadow-lg hover:shadow-green-500/10"
@@ -421,87 +334,90 @@ export default function DashboardHome() {
           </div>
           <div className={`text-xs ${textTertiary}`}>Operações com prejuízo</div>
         </div>
-
-        {/* Banca Inicial */}
-        <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
-          theme === "dark"
-            ? "hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20"
-            : "hover:border-zinc-300 hover:shadow-md"
-        }`}>
-          <div className="flex items-start justify-between mb-4">
-            <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
-              Banca Inicial
-            </div>
-          </div>
-          <div className={`text-3xl font-bold mb-2 ${textPrimary}`}>
-            R$ {bancaInicial.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div className={`text-xs ${textTertiary}`}>Capital inicial investido</div>
         </div>
 
-        {/* Banca Atual */}
-        <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
-          theme === "dark"
-            ? "hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20"
-            : "hover:border-zinc-300 hover:shadow-md"
-        }`}>
-          <div className="flex items-start justify-between mb-4">
-            <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
-              Banca Atual
+        {/* Banca Inicial / Banca Atual lado a lado */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
+            theme === "dark"
+              ? "hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20"
+              : "hover:border-zinc-300 hover:shadow-md"
+          }`}>
+            <div className="flex items-start justify-between mb-4">
+              <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
+                Banca Inicial
+              </div>
             </div>
+            <div className={`text-3xl font-bold mb-2 ${textPrimary}`}>
+              R$ {bancaInicial.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className={`text-xs ${textTertiary}`}>Capital inicial investido</div>
           </div>
-          <div className={`text-3xl font-bold mb-2 ${textPrimary}`}>
-            R$ {bancaAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div className={`text-xs ${textTertiary}`}>Capital disponível</div>
-        </div>
 
-        {/* % Lucro sobre a Banca */}
-        <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
-          lucroBanca >= 0
-            ? theme === "dark"
-              ? "hover:border-green-500/30 hover:shadow-lg hover:shadow-green-500/10"
-              : "hover:border-green-300 hover:shadow-md"
-            : theme === "dark"
-            ? "hover:border-red-500/30 hover:shadow-lg hover:shadow-red-500/10"
-            : "hover:border-red-300 hover:shadow-md"
-        }`}>
-          <div className="flex items-start justify-between mb-4">
-            <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
-              % Lucro sobre Banca
+          <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
+            theme === "dark"
+              ? "hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20"
+              : "hover:border-zinc-300 hover:shadow-md"
+          }`}>
+            <div className="flex items-start justify-between mb-4">
+              <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
+                Banca Atual
+              </div>
             </div>
-            <div className={`h-2 w-2 rounded-full ${lucroBanca >= 0 ? "bg-green-500" : "bg-red-500"}`}></div>
-          </div>
-          <div className={`text-4xl font-bold mb-2 ${lucroBanca >= 0 ? "text-green-500" : "text-red-500"}`}>
-            {lucroBanca >= 0 ? "+" : ""}
-            {lucroBanca.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
-          </div>
-          <div className={`text-xs ${textTertiary}`}>
-            {lucroBanca >= 0 ? "Lucro" : "Prejuízo"} em relação à banca inicial
+            <div className={`text-3xl font-bold mb-2 ${textPrimary}`}>
+              R$ {bancaAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className={`text-xs ${textTertiary}`}>Capital disponível</div>
           </div>
         </div>
 
-        {/* ROI */}
-        <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
-          roi >= 0
-            ? theme === "dark"
-              ? "hover:border-green-500/30 hover:shadow-lg hover:shadow-green-500/10"
-              : "hover:border-green-300 hover:shadow-md"
-            : theme === "dark"
-            ? "hover:border-red-500/30 hover:shadow-lg hover:shadow-red-500/10"
-            : "hover:border-red-300 hover:shadow-md"
-        }`}>
-          <div className="flex items-start justify-between mb-4">
-            <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
-              ROI
+        {/* Lucro sobre a banca / ROI lado a lado */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
+            lucroBanca >= 0
+              ? theme === "dark"
+                ? "hover:border-green-500/30 hover:shadow-lg hover:shadow-green-500/10"
+                : "hover:border-green-300 hover:shadow-md"
+              : theme === "dark"
+              ? "hover:border-red-500/30 hover:shadow-lg hover:shadow-red-500/10"
+              : "hover:border-red-300 hover:shadow-md"
+          }`}>
+            <div className="flex items-start justify-between mb-4">
+              <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
+                % Lucro sobre Banca
+              </div>
+              <div className={`h-2 w-2 rounded-full ${lucroBanca >= 0 ? "bg-green-500" : "bg-red-500"}`}></div>
             </div>
-            <div className={`h-2 w-2 rounded-full ${roi >= 0 ? "bg-green-500" : "bg-red-500"}`}></div>
+            <div className={`text-4xl font-bold mb-2 ${lucroBanca >= 0 ? "text-green-500" : "text-red-500"}`}>
+              {lucroBanca >= 0 ? "+" : ""}
+              {lucroBanca.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+            </div>
+            <div className={`text-xs ${textTertiary}`}>
+              {lucroBanca >= 0 ? "Lucro" : "Prejuízo"} em relação à banca inicial
+            </div>
           </div>
-          <div className={`text-4xl font-bold mb-2 ${roi >= 0 ? "text-green-500" : "text-red-500"}`}>
-            {roi >= 0 ? "+" : ""}
-            {roi.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+
+          <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
+            roi >= 0
+              ? theme === "dark"
+                ? "hover:border-green-500/30 hover:shadow-lg hover:shadow-green-500/10"
+                : "hover:border-green-300 hover:shadow-md"
+              : theme === "dark"
+              ? "hover:border-red-500/30 hover:shadow-lg hover:shadow-red-500/10"
+              : "hover:border-red-300 hover:shadow-md"
+          }`}>
+            <div className="flex items-start justify-between mb-4">
+              <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
+                ROI
+              </div>
+              <div className={`h-2 w-2 rounded-full ${roi >= 0 ? "bg-green-500" : "bg-red-500"}`}></div>
+            </div>
+            <div className={`text-4xl font-bold mb-2 ${roi >= 0 ? "text-green-500" : "text-red-500"}`}>
+              {roi >= 0 ? "+" : ""}
+              {roi.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+            </div>
+            <div className={`text-xs ${textTertiary}`}>Retorno sobre investimento</div>
           </div>
-          <div className={`text-xs ${textTertiary}`}>Retorno sobre investimento</div>
         </div>
       </div>
 

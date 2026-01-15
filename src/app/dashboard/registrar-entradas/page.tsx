@@ -26,6 +26,7 @@ export default function RegistrarEntradasPage() {
   const [bancaAtual, setBancaAtual] = useState<number | null>(null);
   const [stakeSelecionada, setStakeSelecionada] = useState<string>("");
   const [stakeCustomizada, setStakeCustomizada] = useState<string>("");
+  const [mostrarStake, setMostrarStake] = useState<boolean>(false);
   const [odd, setOdd] = useState<string>("");
   const [esporte, setEsporte] = useState<string>("");
   const [esporteCustomizado, setEsporteCustomizado] = useState<string>("");
@@ -219,6 +220,14 @@ export default function RegistrarEntradasPage() {
     if (value !== "custom") {
       setStakeCustomizada("");
     }
+  }
+
+  function stakeLabel() {
+    if (!stakeSelecionada) return "";
+    if (stakeSelecionada === "custom") {
+      return stakeCustomizada.trim() ? `${stakeCustomizada}%` : "Outra (customizada)";
+    }
+    return `${stakeSelecionada}%`;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -441,71 +450,118 @@ export default function RegistrarEntradasPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Stake */}
             <div>
-              <label className={`block text-sm font-medium ${textSecondary} mb-3`}>
-                Stake
-              </label>
-              <div className="space-y-2">
-                {STAKES_PREDEFINIDAS.map((stake) => (
-                  <label
-                    key={stake}
-                    className={`flex items-center p-3 rounded-lg border ${cardBorder} cursor-pointer ${hoverBg} transition-colors`}
+              <button
+                type="button"
+                onClick={() => setMostrarStake((v) => !v)}
+                className={`w-full p-3 rounded-lg border-2 transition-colors cursor-pointer ${
+                  mostrarStake
+                    ? theme === "dark"
+                      ? "border-zinc-600 bg-zinc-800"
+                      : "border-zinc-400 bg-zinc-50"
+                    : `${cardBorder} ${cardBg} ${hoverBg}`
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-sm font-medium ${textPrimary}`}>
+                    Selecionar stake
+                  </span>
+                  <span className={`text-xs ${textTertiary}`}>
+                    {stakeSelecionada ? `✓ ${stakeLabel()}` : "Clique para selecionar"}
+                  </span>
+                  <svg
+                    className={`w-5 h-5 ${textTertiary} transition-transform ${
+                      mostrarStake ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
+
+              {mostrarStake && (
+                <div className={`mt-3 space-y-2 p-4 rounded-lg border ${cardBorder} ${infoBg}`}>
+                  {STAKES_PREDEFINIDAS.map((stake) => (
+                    <label
+                      key={stake}
+                      className={`flex items-center p-3 rounded-lg border ${cardBorder} cursor-pointer ${hoverBg} transition-colors`}
+                    >
+                      <input
+                        type="radio"
+                        name="stake"
+                        value={stake.toString()}
+                        checked={stakeSelecionada === stake.toString()}
+                        onChange={(e) => {
+                          handleStakeChange(e.target.value);
+                          setMostrarStake(false);
+                        }}
+                        className="mr-3"
+                      />
+                      <div className="flex-1">
+                        <div className={`text-sm font-medium ${textPrimary}`}>
+                          {stake}%
+                        </div>
+                        {bancaInicial && bancaInicial > 0 && (
+                          <div className={`text-xs ${textTertiary}`}>
+                            R${" "}
+                            {((bancaInicial * stake) / 100).toLocaleString("pt-BR", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+
+                  <label className={`flex items-center p-3 rounded-lg border ${cardBorder} cursor-pointer ${hoverBg} transition-colors`}>
                     <input
                       type="radio"
                       name="stake"
-                      value={stake.toString()}
-                      checked={stakeSelecionada === stake.toString()}
+                      value="custom"
+                      checked={stakeSelecionada === "custom"}
                       onChange={(e) => handleStakeChange(e.target.value)}
                       className="mr-3"
                     />
                     <div className="flex-1">
-                      <div className={`text-sm font-medium ${textPrimary}`}>
-                        {stake}%
+                      <div className={`text-sm font-medium ${textPrimary} mb-1`}>
+                        Outra (customizada)
                       </div>
-                      {bancaInicial && bancaInicial > 0 && (
-                        <div className={`text-xs ${textTertiary}`}>
-                          R${" "}
-                          {((bancaInicial * stake) / 100).toLocaleString("pt-BR", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
+                      {stakeSelecionada === "custom" && (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="Digite a stake (ex: 1.5)"
+                            value={stakeCustomizada}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^\d,.-]/g, "");
+                              setStakeCustomizada(value);
+                            }}
+                            className={`w-full p-2 rounded border ${inputBorder} ${inputBg} text-sm ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
+                            required={stakeSelecionada === "custom"}
+                          />
+                          {stakeCustomizada.trim() ? (
+                            <button
+                              type="button"
+                              onClick={() => setMostrarStake(false)}
+                              className={`w-full px-3 py-2 rounded text-sm font-medium cursor-pointer transition-colors ${
+                                theme === "dark"
+                                  ? "bg-zinc-700 text-white hover:bg-zinc-600"
+                                  : "bg-zinc-900 text-white hover:bg-zinc-800"
+                              }`}
+                            >
+                              Confirmar
+                            </button>
+                          ) : null}
                         </div>
                       )}
                     </div>
                   </label>
-                ))}
-
-                {/* Opção customizada */}
-                <label className={`flex items-center p-3 rounded-lg border ${cardBorder} cursor-pointer ${hoverBg} transition-colors`}>
-                  <input
-                    type="radio"
-                    name="stake"
-                    value="custom"
-                    checked={stakeSelecionada === "custom"}
-                    onChange={(e) => handleStakeChange(e.target.value)}
-                    className="mr-3"
-                  />
-                  <div className="flex-1">
-                    <div className={`text-sm font-medium ${textPrimary} mb-1`}>
-                      Outra (customizada)
-                    </div>
-                    {stakeSelecionada === "custom" && (
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="Digite a stake (ex: 1.5)"
-                        value={stakeCustomizada}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^\d,.-]/g, "");
-                          setStakeCustomizada(value);
-                        }}
-                        className={`w-full p-2 rounded border ${inputBorder} ${inputBg} text-sm ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
-                        required={stakeSelecionada === "custom"}
-                      />
-                    )}
-                  </div>
-                </label>
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Valor Apostado (calculado automaticamente) */}

@@ -43,6 +43,7 @@ export default function RelatoriosPage() {
   const [loading, setLoading] = useState(true);
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("todos");
   const [filtroMercado, setFiltroMercado] = useState<string>("todos");
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   // Classes de tema
   const textPrimary = theme === "dark" ? "text-white" : "text-zinc-900";
@@ -249,13 +250,10 @@ export default function RelatoriosPage() {
     [] as { data: string; valor: number; valorResultado: number; dataCompleta: Date }[]
   );
 
-  // Encontra dias de maior lucro e maior perda
-  const maiorLucro = evolucaoBanca.length > 0
-    ? evolucaoBanca.reduce((max, e) => (e.valorResultado > max.valorResultado ? e : max), evolucaoBanca[0])
-    : null;
-  const maiorPerda = evolucaoBanca.length > 0
-    ? evolucaoBanca.reduce((min, e) => (e.valorResultado < min.valorResultado ? e : min), evolucaoBanca[0])
-    : null;
+  const dataInicioLabel = entradasFiltradas.length > 0
+    ? new Date(entradasFiltradas[0].created_at).toLocaleDateString("pt-BR")
+    : "";
+  const dataFimLabel = new Date().toLocaleDateString("pt-BR");
 
   // Projeções
   const diasComDados = entradasFiltradas.length > 0
@@ -362,13 +360,6 @@ export default function RelatoriosPage() {
           points.slice(1).map((p) => `L ${p.x} ${p.y}`).join(" ")
         : "";
 
-    const maiorLucroPoint = maiorLucro
-      ? points.find((p) => p.dataCompleta.getTime() === maiorLucro.dataCompleta.getTime())
-      : null;
-    const maiorPerdaPoint = maiorPerda
-      ? points.find((p) => p.dataCompleta.getTime() === maiorPerda.dataCompleta.getTime())
-      : null;
-
     return (
       <div className="w-full overflow-x-auto">
         <svg width={width} height={height} className="w-full">
@@ -402,75 +393,10 @@ export default function RelatoriosPage() {
               className="hover:r-6 transition-all"
             />
           ))}
-          {/* Marcador de maior lucro */}
-          {maiorLucroPoint && maiorLucroPoint.valorResultado > 0 && (
-            <g>
-              <circle
-                cx={maiorLucroPoint.x}
-                cy={maiorLucroPoint.y}
-                r="8"
-                fill="#22c55e"
-                stroke="#fff"
-                strokeWidth="2"
-              />
-              <circle
-                cx={maiorLucroPoint.x}
-                cy={maiorLucroPoint.y}
-                r="12"
-                fill="none"
-                stroke="#22c55e"
-                strokeWidth="2"
-                opacity="0.5"
-                className="animate-ping"
-              />
-            </g>
-          )}
-          {/* Marcador de maior perda */}
-          {maiorPerdaPoint && maiorPerdaPoint.valorResultado < 0 && (
-            <g>
-              <circle
-                cx={maiorPerdaPoint.x}
-                cy={maiorPerdaPoint.y}
-                r="8"
-                fill="#dc2626"
-                stroke="#fff"
-                strokeWidth="2"
-              />
-              <circle
-                cx={maiorPerdaPoint.x}
-                cy={maiorPerdaPoint.y}
-                r="12"
-                fill="none"
-                stroke="#dc2626"
-                strokeWidth="2"
-                opacity="0.5"
-                className="animate-ping"
-              />
-            </g>
-          )}
         </svg>
-        {/* Legenda */}
-        <div className="mt-4 flex items-center justify-center gap-4 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-0.5 bg-blue-500"></div>
-            <span className={textTertiary}>Evolução da Banca</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-0.5 border-dashed border border-zinc-500"></div>
-            <span className={textTertiary}>Banca Inicial</span>
-          </div>
-          {maiorLucroPoint && maiorLucroPoint.valorResultado > 0 && (
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className={textTertiary}>Maior Lucro</span>
-            </div>
-          )}
-          {maiorPerdaPoint && maiorPerdaPoint.valorResultado < 0 && (
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-600"></div>
-              <span className={textTertiary}>Maior Perda</span>
-            </div>
-          )}
+        <div className="mt-2 flex items-center justify-between text-[11px]">
+          <span className={textTertiary}>{dataInicioLabel}</span>
+          <span className={textTertiary}>{dataFimLabel}</span>
         </div>
       </div>
     );
@@ -498,148 +424,107 @@ export default function RelatoriosPage() {
 
       {/* Filtros */}
       <div className={`rounded-xl border ${cardBorder} ${cardBg} p-4`}>
-        <div className="space-y-4">
-          {/* Filtro por período */}
-          <div>
-            <span className={`text-sm font-medium ${textSecondary} mb-2 block`}>
-              Filtrar por período:
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {(["todos", "hoje", "ontem", "7dias", "15dias", "30dias", "60dias", "90dias"] as FiltroPeriodo[]).map((periodo) => (
-                <button
-                  key={periodo}
-                  onClick={() => setFiltroPeriodo(periodo)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
-                    filtroPeriodo === periodo
-                      ? theme === "dark"
-                        ? "bg-zinc-700 text-white"
-                        : "bg-zinc-900 text-white"
-                      : theme === "dark"
-                      ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-                  }`}
-                >
-                  {periodo === "todos" && "Todos"}
-                  {periodo === "hoje" && "Hoje"}
-                  {periodo === "ontem" && "Ontem"}
-                  {periodo === "7dias" && "7 dias"}
-                  {periodo === "15dias" && "15 dias"}
-                  {periodo === "30dias" && "30 dias"}
-                  {periodo === "60dias" && "60 dias"}
-                  {periodo === "90dias" && "90 dias"}
-                </button>
-              ))}
-            </div>
-          </div>
+        <button
+          type="button"
+          onClick={() => setMostrarFiltros((v) => !v)}
+          className={`w-full flex items-center justify-between cursor-pointer ${
+            theme === "dark" ? "text-zinc-200" : "text-zinc-900"
+          }`}
+        >
+          <span className={`text-sm font-semibold ${textPrimary}`}>Filtros</span>
+          <span className={`text-xs ${textTertiary}`}>
+            {mostrarFiltros ? "Fechar" : "Abrir"}
+          </span>
+        </button>
 
-          {/* Filtro por mercado */}
-          <div>
-            <span className={`text-sm font-medium ${textSecondary} mb-2 block`}>
-              Filtrar por mercado:
-            </span>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setFiltroMercado("todos")}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
-                  filtroMercado === "todos"
-                    ? theme === "dark"
-                      ? "bg-zinc-700 text-white"
-                      : "bg-zinc-900 text-white"
-                    : theme === "dark"
-                    ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-                }`}
+        {mostrarFiltros && (
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <div className={`text-xs font-medium ${textSecondary} mb-2`}>Período</div>
+              <select
+                value={filtroPeriodo}
+                onChange={(e) => setFiltroPeriodo(e.target.value as FiltroPeriodo)}
+                className={`w-full px-3 py-2 rounded-lg border ${cardBorder} ${
+                  theme === "dark" ? "bg-zinc-800 text-zinc-200" : "bg-zinc-50 text-zinc-900"
+                } text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
               >
-                Todos
-              </button>
-              {MERCADOS_NBA.map((mercado) => (
-                <button
-                  key={mercado}
-                  onClick={() => setFiltroMercado(mercado)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
-                    filtroMercado === mercado
-                      ? theme === "dark"
-                        ? "bg-zinc-700 text-white"
-                        : "bg-zinc-900 text-white"
-                      : theme === "dark"
-                      ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-                  }`}
-                >
-                  {mercado}
-                </button>
-              ))}
-              <button
-                onClick={() => setFiltroMercado("outros")}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
-                  filtroMercado === "outros"
-                    ? theme === "dark"
-                      ? "bg-zinc-700 text-white"
-                      : "bg-zinc-900 text-white"
-                    : theme === "dark"
-                    ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-                }`}
+                <option value="todos">Todos</option>
+                <option value="hoje">Hoje</option>
+                <option value="ontem">Ontem</option>
+                <option value="7dias">Últimos 7 dias</option>
+                <option value="15dias">Últimos 15 dias</option>
+                <option value="30dias">Últimos 30 dias</option>
+                <option value="60dias">Últimos 60 dias</option>
+                <option value="90dias">Últimos 90 dias</option>
+              </select>
+            </div>
+            <div>
+              <div className={`text-xs font-medium ${textSecondary} mb-2`}>Mercado</div>
+              <select
+                value={filtroMercado}
+                onChange={(e) => setFiltroMercado(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${cardBorder} ${
+                  theme === "dark" ? "bg-zinc-800 text-zinc-200" : "bg-zinc-50 text-zinc-900"
+                } text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
               >
-                Outros
-              </button>
+                <option value="todos">Todos</option>
+                {MERCADOS_NBA.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+                <option value="outros">Outros</option>
+              </select>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Métricas principais */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <div className={`rounded-xl border ${cardBorder} ${
-          theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
-        } p-4`}>
-          <div className={`text-xs font-medium ${textSecondary} mb-1`}>ROI (%)</div>
-          <div className={`text-xl font-bold ${
-            roi >= 0 ? "text-green-500" : "text-red-500"
-          }`}>
-            {roi >= 0 ? "+" : ""}{roi.toFixed(2)}%
+      {/* Métricas principais (2 em 2) */}
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className={`rounded-xl border ${cardBorder} ${
+            theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
+          } p-4`}>
+            <div className={`text-xs font-medium ${textSecondary} mb-1`}>ROI (%)</div>
+            <div className={`text-xl font-bold ${
+              roi >= 0 ? "text-green-500" : "text-red-500"
+            }`}>
+              {roi >= 0 ? "+" : ""}{roi.toFixed(2)}%
+            </div>
+          </div>
+          <div className={`rounded-xl border ${cardBorder} ${
+            theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
+          } p-4`}>
+            <div className={`text-xs font-medium ${textSecondary} mb-1`}>Lucro/Prejuízo (R$)</div>
+            <div className={`text-xl font-bold ${
+              lucroPrejuizo >= 0 ? "text-green-500" : "text-red-500"
+            }`}>
+              {lucroPrejuizo >= 0 ? "+" : ""}R$ {lucroPrejuizo.toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
           </div>
         </div>
-        <div className={`rounded-xl border ${cardBorder} ${
-          theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
-        } p-4`}>
-          <div className={`text-xs font-medium ${textSecondary} mb-1`}>Lucro/Prejuízo (R$)</div>
-          <div className={`text-xl font-bold ${
-            lucroPrejuizo >= 0 ? "text-green-500" : "text-red-500"
-          }`}>
-            {lucroPrejuizo >= 0 ? "+" : ""}R$ {lucroPrejuizo.toLocaleString("pt-BR", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className={`rounded-xl border ${cardBorder} ${
+            theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
+          } p-4`}>
+            <div className={`text-xs font-medium ${textSecondary} mb-1`}>Stake Total (R$)</div>
+            <div className={`text-xl font-bold ${textPrimary}`}>
+              R$ {stakeTotal.toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
           </div>
-        </div>
-        <div className={`rounded-xl border ${cardBorder} ${
-          theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
-        } p-4`}>
-          <div className={`text-xs font-medium ${textSecondary} mb-1`}>Stake Total (R$)</div>
-          <div className={`text-xl font-bold ${textPrimary}`}>
-            R$ {stakeTotal.toLocaleString("pt-BR", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </div>
-        </div>
-        <div className={`rounded-xl border ${cardBorder} ${
-          theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
-        } p-4`}>
-          <div className={`text-xs font-medium ${textSecondary} mb-1`}>Odds Média</div>
-          <div className={`text-xl font-bold ${textPrimary}`}>
-            {oddsMedia.toFixed(2)}
-          </div>
-        </div>
-        <div className={`rounded-xl border ${cardBorder} ${
-          theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
-        } p-4`}>
-          <div className={`text-xs font-medium ${textSecondary} mb-1`}>Winrate</div>
-          <div className={`text-xl font-bold ${
-            winrate >= 50 ? "text-green-500" : "text-red-500"
-          }`}>
-            {winrate.toFixed(1)}%
+          <div className={`rounded-xl border ${cardBorder} ${
+            theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
+          } p-4`}>
+            <div className={`text-xs font-medium ${textSecondary} mb-1`}>Odds Média</div>
+            <div className={`text-xl font-bold ${textPrimary}`}>{oddsMedia.toFixed(2)}</div>
           </div>
         </div>
       </div>
@@ -713,30 +598,6 @@ export default function RelatoriosPage() {
           {evolucaoBanca.length > 0 ? (
             <div>
               <LineChart data={evolucaoBanca} />
-              <div className="mt-4 flex items-center justify-between text-sm">
-                <div>
-                  <div className={textTertiary}>Banca Inicial</div>
-                  <div className={`font-semibold ${textPrimary}`}>
-                    R$ {bancaInicial.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className={textTertiary}>Banca Atual</div>
-                  <div
-                    className={`font-semibold ${
-                      bancaAtual >= bancaInicial ? "text-green-500" : "text-red-500"
-                    }`}
-                  >
-                    R$ {bancaAtual.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </div>
-                </div>
-              </div>
             </div>
           ) : (
             <div className={`h-64 flex items-center justify-center ${textTertiary}`}>
@@ -836,7 +697,7 @@ export default function RelatoriosPage() {
           <h2 className={`text-lg font-semibold ${textPrimary} mb-6`}>
             Desempenho por Mercado
           </h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {desempenhoPorMercado.map((mercado) => (
               <div
                 key={mercado.mercado}
@@ -844,46 +705,30 @@ export default function RelatoriosPage() {
                   theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
                 } p-4`}
               >
-                <div className={`text-sm font-semibold ${textPrimary} mb-3`}>
-                  {mercado.mercado}
+                <div className="flex items-start justify-between gap-3">
+                  <div className={`text-sm font-semibold ${textPrimary}`}>
+                    {mercado.mercado}
+                  </div>
+                  <div className={`text-xs ${textTertiary}`}>{mercado.total} entradas</div>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs ${textTertiary}`}>Total</span>
-                    <span className={`text-sm font-medium ${textPrimary}`}>
-                      {mercado.total}
-                    </span>
+
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-green-500 font-semibold">{mercado.percentGreen.toFixed(0)}%</span>
+                    <span className={textTertiary}>G</span>
+                    <span className="text-red-500 font-semibold">{mercado.percentRed.toFixed(0)}%</span>
+                    <span className={textTertiary}>R</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs ${textTertiary}`}>Greens</span>
-                    <span className="text-sm font-medium text-green-500">
-                      {mercado.greens} ({mercado.percentGreen.toFixed(1)}%)
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs ${textTertiary}`}>Reds</span>
-                    <span className="text-sm font-medium text-red-500">
-                      {mercado.reds} ({mercado.percentRed.toFixed(1)}%)
-                    </span>
-                  </div>
-                  <div className={`pt-2 border-t ${cardBorder}`}>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs ${textTertiary}`}>Resultado</span>
-                      <span
-                        className={`text-sm font-semibold ${
-                          mercado.resultadoTotal >= 0
-                            ? "text-green-500"
-                            : "text-red-500"
-                        }`}
-                      >
-                        {mercado.resultadoTotal >= 0 ? "+" : ""}
-                        R${" "}
-                        {mercado.resultadoTotal.toLocaleString("pt-BR", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </span>
-                    </div>
+                  <div
+                    className={`text-sm font-semibold ${
+                      mercado.resultadoTotal >= 0 ? "text-green-500" : "text-red-500"
+                    }`}
+                  >
+                    {mercado.resultadoTotal >= 0 ? "+" : ""}
+                    R$ {mercado.resultadoTotal.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </div>
                 </div>
               </div>

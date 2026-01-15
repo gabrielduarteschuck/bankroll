@@ -411,103 +411,81 @@ export default function MinhasEntradasPage() {
       </div>
 
       {/* Resumo */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-4 shadow-sm`}>
-          <div className={`text-sm font-medium ${textSecondary}`}>Total</div>
-          <div className={`mt-2 text-2xl font-semibold ${textPrimary}`}>
-            {totalEntradas}
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-4 shadow-sm`}>
+            <div className={`text-sm font-medium ${textSecondary}`}>Total de Entradas</div>
+            <div className={`mt-2 text-2xl font-semibold ${textPrimary}`}>{totalEntradas}</div>
+          </div>
+          <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-4 shadow-sm`}>
+            <div className={`text-sm font-medium ${textSecondary}`}>Resultado Total</div>
+            <div
+              className={`mt-2 text-2xl font-semibold ${
+                somaResultados >= 0 ? "text-green-500" : "text-red-500"
+              }`}
+            >
+              {somaResultados >= 0 ? "+" : ""}
+              R$ {somaResultados.toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
           </div>
         </div>
-        <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-4 shadow-sm`}>
-          <div className={`text-sm font-medium ${textSecondary}`}>Greens</div>
-          <div className="mt-2 text-2xl font-semibold text-green-500">
-            {totalGreens}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-4 shadow-sm`}>
+            <div className={`text-sm font-medium ${textSecondary}`}>Greens</div>
+            <div className="mt-2 text-2xl font-semibold text-green-500">{totalGreens}</div>
           </div>
-        </div>
-        <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-4 shadow-sm`}>
-          <div className={`text-sm font-medium ${textSecondary}`}>Reds</div>
-          <div className="mt-2 text-2xl font-semibold text-red-500">
-            {totalReds}
-          </div>
-        </div>
-        <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-4 shadow-sm`}>
-          <div className={`text-sm font-medium ${textSecondary}`}>Resultado Total</div>
-          <div
-            className={`mt-2 text-2xl font-semibold ${
-              somaResultados >= 0 ? "text-green-500" : "text-red-500"
-            }`}
-          >
-            {somaResultados >= 0 ? "+" : ""}
-            R$ {somaResultados.toLocaleString("pt-BR", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+          <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-4 shadow-sm`}>
+            <div className={`text-sm font-medium ${textSecondary}`}>Reds</div>
+            <div className="mt-2 text-2xl font-semibold text-red-500">{totalReds}</div>
           </div>
         </div>
       </div>
 
-      {/* Filtros de Período */}
+      {/* Filtro (compacto) */}
       <div className={`rounded-xl border ${cardBorder} ${cardBg} p-4`}>
         <div className="flex flex-wrap items-center gap-3">
-          <span className={`text-sm font-medium ${textSecondary}`}>Filtrar por período:</span>
-          {(["todos", "hoje", "ontem", "7dias", "15dias", "30dias", "60dias", "90dias"] as FiltroPeriodo[]).map((periodo) => (
-            <button
-              key={periodo}
-              onClick={() => {
-                setFiltroPeriodo(periodo);
+          <span className={`text-sm font-medium ${textSecondary}`}>Período</span>
+          <select
+            value={filtroPeriodo}
+            onChange={(e) => {
+              const value = e.target.value as FiltroPeriodo;
+              setFiltroPeriodo(value);
+              if (value !== "personalizado") {
                 setDataInicio("");
                 setDataFim("");
-              }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
-                filtroPeriodo === periodo
-                  ? theme === "dark"
-                    ? "bg-zinc-700 text-white"
-                    : "bg-zinc-900 text-white"
-                  : theme === "dark"
-                  ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-              }`}
-            >
-              {periodo === "todos" && "Todos"}
-              {periodo === "hoje" && "Hoje"}
-              {periodo === "ontem" && "Ontem"}
-              {periodo === "7dias" && "7 dias"}
-              {periodo === "15dias" && "15 dias"}
-              {periodo === "30dias" && "30 dias"}
-              {periodo === "60dias" && "60 dias"}
-              {periodo === "90dias" && "90 dias"}
-            </button>
-          ))}
-          <button
-            onClick={() => setFiltroPeriodo("personalizado")}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
-              filtroPeriodo === "personalizado"
-                ? theme === "dark"
-                  ? "bg-zinc-700 text-white"
-                  : "bg-zinc-900 text-white"
-                : theme === "dark"
-                ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-            }`}
+              }
+            }}
+            className={`px-3 py-2 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
           >
-            Personalizado
-          </button>
+            <option value="todos">Todos</option>
+            <option value="hoje">Hoje</option>
+            <option value="ontem">Ontem</option>
+            <option value="7dias">Últimos 7 dias</option>
+            <option value="15dias">Últimos 15 dias</option>
+            <option value="30dias">Últimos 30 dias</option>
+            <option value="60dias">Últimos 60 dias</option>
+            <option value="90dias">Últimos 90 dias</option>
+            <option value="personalizado">Personalizado</option>
+          </select>
+
           {filtroPeriodo === "personalizado" && (
-            <div className="flex items-center gap-2 ml-2">
+            <div className="flex items-center gap-2">
               <input
                 type="date"
                 value={dataInicio}
                 onChange={(e) => setDataInicio(e.target.value)}
-                className={`px-3 py-1.5 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
-                placeholder="Data inicial"
+                className={`px-3 py-2 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
               />
               <span className={textTertiary}>até</span>
               <input
                 type="date"
                 value={dataFim}
                 onChange={(e) => setDataFim(e.target.value)}
-                className={`px-3 py-1.5 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
-                placeholder="Data final"
+                className={`px-3 py-2 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
               />
             </div>
           )}
