@@ -318,6 +318,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white">
       <div className="w-full max-w-sm space-y-4 p-6 rounded-xl border border-zinc-800 bg-zinc-950">
+        <div className="flex justify-center pt-2">
+          <img src="/logo.svg" alt="ProStake" className="h-14 w-auto" />
+        </div>
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">
             {isSignUp ? "Criar Conta" : "Login"} – ProStake

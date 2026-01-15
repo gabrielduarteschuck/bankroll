@@ -600,3 +600,9 @@
 {"location":"login/page.tsx:17","message":"handleLogin entry","data":{"email":"duarte.schuck@icloud.com"},"timestamp":1768503287254,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
 {"location":"login/page.tsx:27","message":"signInWithPassword result","data":{"hasError":false,"hasSession":true},"timestamp":1768503287784,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
 {"location":"login/page.tsx:35","message":"login success - before redirect","data":{"hasSession":true},"timestamp":1768503287784,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"login/page.tsx:17","message":"handleLogin entry","data":{"email":"duarte.schuck@icloud.com"},"timestamp":1768507108460,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"login/page.tsx:27","message":"signInWithPassword result","data":{"hasError":false,"hasSession":true},"timestamp":1768507108819,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"login/page.tsx:35","message":"login success - before redirect","data":{"hasSession":true},"timestamp":1768507108820,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"login/page.tsx:17","message":"handleLogin entry","data":{"email":"duarte.schuck@icloud.com"},"timestamp":1768510939168,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"login/page.tsx:27","message":"signInWithPassword result","data":{"hasError":false,"hasSession":true},"timestamp":1768510939664,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"login/page.tsx:35","message":"login success - before redirect","data":{"hasSession":true},"timestamp":1768510939665,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}

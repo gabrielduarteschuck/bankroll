@@ -93,10 +93,17 @@ export default function DashboardLayout({
             </svg>
           )}
         </button>
-        <div className={`text-sm font-semibold ${
-          theme === "dark" ? "text-white" : "text-zinc-900"
-        }`}>
-          VDT Dashboard
+        <div className="flex items-center gap-2">
+          <img
+            src="/logo-mark.svg"
+            alt="ProStake"
+            className="h-7 w-7"
+          />
+          <div className={`text-sm font-semibold ${
+            theme === "dark" ? "text-white" : "text-zinc-900"
+          }`}>
+            ProStake
+          </div>
         </div>
       </div>
 
@@ -120,10 +127,17 @@ export default function DashboardLayout({
               ? "border-zinc-800 bg-zinc-900"
               : "border-zinc-200 bg-white"
           }`}>
-            <div className={`text-sm font-semibold ${
-              theme === "dark" ? "text-white" : "text-zinc-900"
-            }`}>
-              VDT Dashboard
+            <div className="flex items-center gap-2">
+              <img
+                src="/logo-mark.svg"
+                alt="ProStake"
+                className="h-7 w-7"
+              />
+              <div className={`text-sm font-semibold ${
+                theme === "dark" ? "text-white" : "text-zinc-900"
+              }`}>
+                ProStake
+              </div>
             </div>
             <div className={`mt-1 text-xs ${
               theme === "dark" ? "text-zinc-400" : "text-zinc-500"
@@ -177,10 +191,17 @@ export default function DashboardLayout({
               ? "border-zinc-800 bg-zinc-900"
               : "border-zinc-200 bg-white"
           }`}>
-            <div className={`text-sm font-semibold ${
-              theme === "dark" ? "text-white" : "text-zinc-900"
-            }`}>
-              VDT Dashboard
+            <div className="flex items-center gap-2">
+              <img
+                src="/logo-mark.svg"
+                alt="ProStake"
+                className="h-7 w-7"
+              />
+              <div className={`text-sm font-semibold ${
+                theme === "dark" ? "text-white" : "text-zinc-900"
+              }`}>
+                ProStake
+              </div>
             </div>
             <div className={`mt-1 text-xs ${
               theme === "dark" ? "text-zinc-400" : "text-zinc-500"
