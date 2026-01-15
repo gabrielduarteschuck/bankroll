@@ -320,7 +320,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-4 p-6 rounded-xl border border-zinc-800 bg-zinc-950">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">
-            {isSignUp ? "Criar Conta" : "Login"} – Dashboard NBA
+            {isSignUp ? "Criar Conta" : "Login"} – ProStake
           </h1>
           <p className="text-sm text-zinc-400">
             {isSignUp
