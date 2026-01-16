@@ -158,9 +158,18 @@ export default function LoginPage() {
       // Cria a conta no Supabase
       const redirectTo =
         typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined;
+
+      // DEBUG (temporário): variáveis de ambiente públicas
+      console.log("SUPABASE URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
+      console.log("SUPABASE KEY EXISTS", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+      // DEBUG (temporário): input do signup
+      const phone = phoneE164OrNull();
+      console.log("SIGNUP INPUT", { email, password, phone });
+
       console.log("🚀 Iniciando signup...", {
         email,
-        phone: phoneE164,
+        phone,
         redirectTo,
       });
       const startTime = Date.now();
@@ -175,7 +184,7 @@ export default function LoginPage() {
             options: {
               data: {
                 // Importante: telefone NÃO vai como campo principal; apenas metadata.
-                ...(phoneE164 ? { phone: phoneE164 } : {}),
+                ...(phone ? { phone } : {}),
               },
               emailRedirectTo: redirectTo,
             },
@@ -211,29 +220,15 @@ export default function LoginPage() {
       const { data, error: signUpError } = signUpResult;
 
       // Logs explícitos para debug em produção (browser console)
-      console.log("📦 signUp data:", data);
-      console.log("🧯 signUp error:", signUpError);
+      console.log("SIGNUP DATA", data);
+      console.log("SIGNUP ERROR", signUpError);
 
       if (signUpError) {
         clearTimeout(timeoutId);
         console.error("Erro no signup:", signUpError);
-        
-        // Mensagens de erro mais amigáveis
-        let errorMessage = signUpError.message || "Erro ao criar conta.";
-        if (signUpError.message?.toLowerCase().includes("timeout")) {
-          errorMessage = "O Supabase demorou para responder. Tente novamente em alguns instantes.";
-        } else if (signUpError.message?.includes("fetch") || signUpError.message?.includes("Failed")) {
-          errorMessage = "Erro de conexão. Verifique sua internet e tente novamente.";
-        } else if (signUpError.message?.includes("Database error")) {
-          errorMessage = "Erro no banco de dados. Execute a migration 0005_fix_signup_trigger.sql no Supabase.";
-        } else if (signUpError.message?.includes("User already registered")) {
-          errorMessage = "Este email já está cadastrado. Tente fazer login.";
-        } else if (signUpError.message?.toLowerCase().includes("redirect")) {
-          errorMessage =
-            "URL de redirecionamento inválida. Verifique as Redirect URLs no Supabase (Auth > URL Configuration).";
-        }
-        
-        setError(errorMessage);
+
+        // Exibe a mensagem exatamente como vem do Supabase (sem tradução/normalização)
+        setError(signUpError.message || "Erro no signup (sem mensagem).");
         setLoading(false);
         return;
       }
