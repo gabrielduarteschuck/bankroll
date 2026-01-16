@@ -321,6 +321,193 @@ export default function DashboardHome() {
 
       {/* Cards (ordem e compactação pedidas) */}
       <div className="space-y-6">
+        {/* Saldo Atual */}
+        <div className="grid grid-cols-1">
+          <div
+            className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
+              theme === "dark"
+                ? "hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20"
+                : "hover:border-zinc-300 hover:shadow-md"
+            }`}
+          >
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div
+                  className={`mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-lg border ${
+                    theme === "dark" ? "border-zinc-800 bg-zinc-900" : "border-zinc-200 bg-white"
+                  }`}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className={theme === "dark" ? "h-5 w-5 text-zinc-200" : "h-5 w-5 text-zinc-700"}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 7h18M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z"
+                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 15h4" />
+                  </svg>
+                </div>
+
+                <div>
+                  <div className={`text-sm font-semibold ${textPrimary}`}>Saldo Atual</div>
+                  <div className="mt-2 flex items-baseline gap-2 whitespace-nowrap font-bold tabular-nums">
+                    <span className={`text-3xl sm:text-4xl ${textPrimary}`}>R$</span>
+                    <span className={`text-3xl sm:text-4xl ${textPrimary}`}>
+                      {bancaAtual.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  <div className={`mt-1 text-sm ${textSecondary} whitespace-nowrap tabular-nums`}>
+                    <span>Saldo Inicial: </span>
+                    <span className="font-semibold">R$</span>{" "}
+                    <span className="font-semibold">
+                      {bancaInicial.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  {/* % sobre a banca (desktop) em badge verde/vermelho */}
+                  <div className="mt-2 hidden sm:block">
+                    <div
+                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold whitespace-nowrap tabular-nums ${
+                        lucroBanca >= 0
+                          ? theme === "dark"
+                            ? "border-green-800 bg-green-900/20 text-green-200"
+                            : "border-green-200 bg-green-50 text-green-700"
+                          : theme === "dark"
+                          ? "border-red-800 bg-red-900/20 text-red-200"
+                          : "border-red-200 bg-red-50 text-red-700"
+                      }`}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d={lucroBanca >= 0 ? "M3 17l6-6 4 4 7-7" : "M3 7l6 6 4-4 7 7"}
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d={lucroBanca >= 0 ? "M14 7h7v7" : "M21 17h-7v-7"}
+                        />
+                      </svg>
+                      <span>
+                        {lucroBanca >= 0 ? "+" : ""}
+                        {lucroBanca.toLocaleString("pt-BR", {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                        })}
+                        %
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="hidden sm:flex flex-col items-start sm:items-end gap-2">
+                <div
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold whitespace-nowrap tabular-nums ${
+                    lucroLiquido >= 0
+                      ? theme === "dark"
+                        ? "border-green-800 bg-green-900/20 text-green-200"
+                        : "border-green-200 bg-green-50 text-green-700"
+                      : theme === "dark"
+                      ? "border-red-800 bg-red-900/20 text-red-200"
+                      : "border-red-200 bg-red-50 text-red-700"
+                  }`}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d={lucroLiquido >= 0 ? "M3 17l6-6 4 4 7-7" : "M3 7l6 6 4-4 7 7"}
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d={lucroLiquido >= 0 ? "M14 7h7v7" : "M21 17h-7v-7"}
+                    />
+                  </svg>
+                  <span className="whitespace-nowrap">
+                    {lucroLiquido >= 0 ? "+" : ""}R${" "}
+                    {lucroLiquido.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Badge no mobile, alinhado com o início do valor */}
+            <div className="mt-4 ml-12 sm:hidden">
+              <div
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold whitespace-nowrap tabular-nums ${
+                  lucroLiquido >= 0
+                    ? theme === "dark"
+                      ? "border-green-800 bg-green-900/20 text-green-200"
+                      : "border-green-200 bg-green-50 text-green-700"
+                    : theme === "dark"
+                    ? "border-red-800 bg-red-900/20 text-red-200"
+                    : "border-red-200 bg-red-50 text-red-700"
+                }`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d={lucroLiquido >= 0 ? "M3 17l6-6 4 4 7-7" : "M3 7l6 6 4-4 7 7"}
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d={lucroLiquido >= 0 ? "M14 7h7v7" : "M21 17h-7v-7"}
+                  />
+                </svg>
+                <span className="whitespace-nowrap">
+                  {lucroLiquido >= 0 ? "+" : ""}R${" "}
+                  {lucroLiquido.toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{" "}
+                  ({lucroBanca >= 0 ? "+" : ""}
+                  {lucroBanca.toLocaleString("pt-BR", {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                  })}
+                  %)
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Assertividade / Lucro Líquido */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div
@@ -438,14 +625,20 @@ export default function DashboardHome() {
             theme === "dark"
               ? "hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20"
               : "hover:border-zinc-300 hover:shadow-md"
-          }`}>
+          } text-center`}>
             <div className="flex items-start justify-between mb-4">
               <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
                 Banca Inicial
               </div>
             </div>
-            <div className={`text-3xl font-bold mb-2 ${textPrimary}`}>
-              R$ {bancaInicial.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className="mt-2 flex items-baseline justify-center gap-2 whitespace-nowrap font-bold tabular-nums">
+              <span className={`text-2xl sm:text-3xl ${textPrimary}`}>R$</span>
+              <span className={`text-2xl sm:text-3xl ${textPrimary}`}>
+                {bancaInicial.toLocaleString("pt-BR", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
             </div>
             <div className={`text-xs ${textTertiary}`}>Capital inicial investido</div>
           </div>
@@ -454,14 +647,20 @@ export default function DashboardHome() {
             theme === "dark"
               ? "hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20"
               : "hover:border-zinc-300 hover:shadow-md"
-          }`}>
+          } text-center`}>
             <div className="flex items-start justify-between mb-4">
               <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
                 Banca Atual
               </div>
             </div>
-            <div className={`text-3xl font-bold mb-2 ${textPrimary}`}>
-              R$ {bancaAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className="mt-2 flex items-baseline justify-center gap-2 whitespace-nowrap font-bold tabular-nums">
+              <span className={`text-2xl sm:text-3xl ${textPrimary}`}>R$</span>
+              <span className={`text-2xl sm:text-3xl ${textPrimary}`}>
+                {bancaAtual.toLocaleString("pt-BR", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
             </div>
             <div className={`text-xs ${textTertiary}`}>Capital disponível</div>
           </div>
@@ -551,6 +750,32 @@ export default function DashboardHome() {
               />
             </svg>
           </a>
+
+          <a
+            href="https://go.aff.esportiva.bet/s0gwocy0"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
+              theme === "dark"
+                ? "bg-zinc-900 hover:bg-zinc-800"
+                : "bg-zinc-900 hover:bg-zinc-800"
+            }`}
+          >
+            <span>Esportiva</span>
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
+            </svg>
+          </a>
         </div>
         <p className={`text-xs ${textTertiary}`}>
           Aposte com responsabilidade. Apenas para maiores de 18 anos.
@@ -566,12 +791,12 @@ export default function DashboardHome() {
           Entre nos grupos recomendados para receber palpites e análises (NBA e Futebol).
         </p>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <a
             href="https://t.me/+TTjhM_Pm_RlkN2Nh"
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-[1.02] cursor-pointer ${
               theme === "dark"
                 ? "bg-sky-600 hover:bg-sky-700"
                 : "bg-sky-600 hover:bg-sky-700"
@@ -595,7 +820,7 @@ export default function DashboardHome() {
             href="https://t.me/+cfgSnGAJ82FiYzQx"
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-[1.02] cursor-pointer ${
               theme === "dark"
                 ? "bg-purple-600 hover:bg-purple-700"
                 : "bg-purple-600 hover:bg-purple-700"
