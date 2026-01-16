@@ -24,6 +24,7 @@ export default function RegistrarEntradasPage() {
   const { theme } = useTheme();
   const [bancaInicial, setBancaInicial] = useState<number | null>(null);
   const [bancaAtual, setBancaAtual] = useState<number | null>(null);
+  const [stakeBase, setStakeBase] = useState<number | null>(null);
   const [stakeSelecionada, setStakeSelecionada] = useState<string>("");
   const [stakeCustomizada, setStakeCustomizada] = useState<string>("");
   const [mostrarStake, setMostrarStake] = useState<boolean>(false);
@@ -58,7 +59,7 @@ export default function RegistrarEntradasPage() {
 
   useEffect(() => {
     calculateValues();
-  }, [bancaInicial, stakeSelecionada, stakeCustomizada, odd, resultado]);
+  }, [bancaInicial, stakeBase, stakeSelecionada, stakeCustomizada, odd, resultado]);
 
   useEffect(() => {
     // Carrega sugestões de mercado quando o esporte muda
@@ -126,21 +127,53 @@ export default function RegistrarEntradasPage() {
         return;
       }
 
-      // Busca a banca inicial do banco
-      const { data: bancaData, error: bancaError } = await supabase
-        .from("banca")
-        .select("valor")
-        .eq("user_id", user.id)
-        .single();
+      // Busca a banca (fallback automático caso a coluna stake_base ainda não exista)
+      let bancaData: any = null;
+      let bancaError: any = null;
+
+      {
+        const res = await supabase
+          .from("banca")
+          .select("valor, stake_base")
+          .eq("user_id", user.id)
+          .single();
+        bancaData = res.data;
+        bancaError = res.error;
+      }
+
+      const stakeBaseMissing =
+        !!bancaError &&
+        typeof bancaError?.message === "string" &&
+        bancaError.message.toLowerCase().includes("stake_base");
+
+      if (stakeBaseMissing) {
+        const res2 = await supabase
+          .from("banca")
+          .select("valor")
+          .eq("user_id", user.id)
+          .single();
+        bancaData = res2.data;
+        bancaError = res2.error;
+      }
 
       if (bancaError && bancaError.code !== "PGRST116") {
-        console.error("Erro ao carregar banca:", bancaError);
+        console.error("Erro ao carregar banca:", {
+          code: bancaError.code,
+          message: bancaError.message,
+          details: bancaError.details,
+          hint: bancaError.hint,
+        });
         setLoadingBanca(false);
         return;
       }
 
       const bancaInicialValue = bancaData?.valor || 0;
       setBancaInicial(bancaInicialValue);
+      const stakeBaseValue =
+        bancaData?.stake_base !== null && bancaData?.stake_base !== undefined
+          ? Number(bancaData.stake_base)
+          : bancaInicialValue;
+      setStakeBase(stakeBaseValue);
 
       // Busca entradas para calcular banca atual
       const { data: entradasData, error: entradasError } = await supabase
@@ -173,7 +206,8 @@ export default function RegistrarEntradasPage() {
   }
 
   function calculateValues() {
-    if (!bancaInicial || bancaInicial <= 0) {
+    const base = (stakeBase ?? bancaInicial) ?? 0;
+    if (!base || base <= 0) {
       setValorApostado(0);
       setValorResultado(0);
       return;
@@ -192,7 +226,7 @@ export default function RegistrarEntradasPage() {
     }
 
     const valorApostadoCalculado =
-      percentStake > 0 ? (bancaInicial * percentStake) / 100 : 0;
+      percentStake > 0 ? (base * percentStake) / 100 : 0;
     setValorApostado(valorApostadoCalculado);
 
     // Calcula resultado se tiver odd e resultado selecionado
@@ -441,9 +475,15 @@ export default function RegistrarEntradasPage() {
               </div>
             </div>
           ) : (
-            <div className="mb-6 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm">
-              Você precisa definir uma banca primeiro. Acesse a página "Banca"
-              para configurar.
+            <div
+              className={`mb-6 rounded-xl border px-4 py-3 text-sm ${
+                theme === "dark"
+                  ? "bg-amber-900/20 border-amber-800 text-amber-200"
+                  : "bg-amber-50 border-amber-300 text-amber-950"
+              }`}
+            >
+              Você precisa definir sua banca inicial primeiro. Acesse a página{" "}
+              <span className="font-semibold">Banca</span> para configurar.
             </div>
           )}
 

@@ -21,7 +21,6 @@ export default function DashboardHome() {
   const [bancaInicial, setBancaInicial] = useState(0);
   const [bancaAtual, setBancaAtual] = useState(0);
   const [lucroBanca, setLucroBanca] = useState(0);
-  const [roi, setRoi] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("7dias");
   const [dataInicio, setDataInicio] = useState<string>("");
@@ -31,6 +30,17 @@ export default function DashboardHome() {
   useEffect(() => {
     loadData();
   }, [filtroPeriodo, dataInicio, dataFim]);
+
+  function toNumber(value: any): number {
+    if (value === null || value === undefined) return 0;
+    const n =
+      typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? Number(value)
+          : Number(String(value));
+    return Number.isFinite(n) ? n : 0;
+  }
 
   function getDateRange() {
     const hoje = new Date();
@@ -108,16 +118,53 @@ export default function DashboardHome() {
         return;
       }
 
-      // Busca banca
-      const { data: bancaData } = await supabase
-        .from("banca")
-        .select("valor")
-        .eq("user_id", user.id)
-        .single();
+      // Busca banca (fallback automático caso a coluna stake_base ainda não exista)
+      let bancaData: any = null;
+      let bancaError: any = null;
 
-      if (bancaData) {
-        setBancaInicial(bancaData.valor);
-        setBancaAtual(bancaData.valor);
+      {
+        const res = await supabase
+          .from("banca")
+          .select("valor, stake_base")
+          .eq("user_id", user.id)
+          .single();
+        bancaData = res.data;
+        bancaError = res.error;
+      }
+
+      const stakeBaseMissing =
+        !!bancaError &&
+        typeof bancaError?.message === "string" &&
+        bancaError.message.toLowerCase().includes("stake_base");
+
+      if (stakeBaseMissing) {
+        const res2 = await supabase
+          .from("banca")
+          .select("valor")
+          .eq("user_id", user.id)
+          .single();
+        bancaData = res2.data;
+        bancaError = res2.error;
+      }
+
+      if (bancaError && bancaError.code !== "PGRST116") {
+        console.error("Erro ao carregar banca:", {
+          code: bancaError.code,
+          message: bancaError.message,
+          details: bancaError.details,
+          hint: bancaError.hint,
+        });
+      }
+
+      const bancaInicialNum = bancaData ? toNumber(bancaData.valor) : 0;
+      const stakeBaseNum =
+        bancaData?.stake_base !== null && bancaData?.stake_base !== undefined
+          ? toNumber(bancaData.stake_base)
+          : bancaInicialNum;
+
+      if (bancaInicialNum > 0) {
+        setBancaInicial(bancaInicialNum);
+        setBancaAtual(bancaInicialNum);
       }
 
       // Calcula range de datas
@@ -155,32 +202,23 @@ export default function DashboardHome() {
 
         // Calcula banca atual (banca inicial + soma dos resultados)
         const somaResultados = entradasData.reduce((acc, entrada) => {
-          if (entrada.valor_resultado) {
-            return acc + parseFloat(entrada.valor_resultado);
+          if (entrada.valor_resultado !== null && entrada.valor_resultado !== undefined) {
+            return acc + toNumber(entrada.valor_resultado);
           }
           return acc;
         }, 0);
 
         if (bancaData) {
-          const novaBanca = parseFloat(bancaData.valor) + somaResultados;
+          const novaBanca = bancaInicialNum + somaResultados;
           setBancaAtual(novaBanca);
         }
 
         // Calcula lucro sobre a banca
-        if (bancaData && bancaData.valor > 0) {
-          const lucro = ((somaResultados / bancaData.valor) * 100);
+        if (bancaInicialNum > 0) {
+          const lucro = (somaResultados / bancaInicialNum) * 100;
           setLucroBanca(lucro);
         }
 
-        // Calcula ROI (soma dos lucros / soma dos valores apostados * 100)
-        const totalApostado = entradasData.reduce((acc, entrada) => {
-          return acc + parseFloat(entrada.valor_stake || 0);
-        }, 0);
-
-        if (totalApostado > 0) {
-          const roiCalculado = (somaResultados / totalApostado) * 100;
-          setRoi(roiCalculado);
-        }
       }
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -371,8 +409,8 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        {/* Lucro sobre a banca / ROI lado a lado */}
-        <div className="grid grid-cols-2 gap-6">
+        {/* % Lucro sobre a banca */}
+        <div className="grid grid-cols-1">
           <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
             lucroBanca >= 0
               ? theme === "dark"
@@ -396,28 +434,6 @@ export default function DashboardHome() {
               {lucroBanca >= 0 ? "Lucro" : "Prejuízo"} em relação à banca inicial
             </div>
           </div>
-
-          <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
-            roi >= 0
-              ? theme === "dark"
-                ? "hover:border-green-500/30 hover:shadow-lg hover:shadow-green-500/10"
-                : "hover:border-green-300 hover:shadow-md"
-              : theme === "dark"
-              ? "hover:border-red-500/30 hover:shadow-lg hover:shadow-red-500/10"
-              : "hover:border-red-300 hover:shadow-md"
-          }`}>
-            <div className="flex items-start justify-between mb-4">
-              <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
-                ROI
-              </div>
-              <div className={`h-2 w-2 rounded-full ${roi >= 0 ? "bg-green-500" : "bg-red-500"}`}></div>
-            </div>
-            <div className={`text-4xl font-bold mb-2 ${roi >= 0 ? "text-green-500" : "text-red-500"}`}>
-              {roi >= 0 ? "+" : ""}
-              {roi.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
-            </div>
-            <div className={`text-xs ${textTertiary}`}>Retorno sobre investimento</div>
-          </div>
         </div>
       </div>
 
@@ -428,7 +444,7 @@ export default function DashboardHome() {
         </h2>
         <div className="flex flex-wrap gap-3 mb-4">
           <a
-            href="https://www.lotogreen.com.br"
+            href="https://go.aff.lotogreen.com/d9fxj6w5"
             target="_blank"
             rel="noopener noreferrer"
             className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
@@ -453,7 +469,7 @@ export default function DashboardHome() {
             </svg>
           </a>
           <a
-            href="https://www.bet365.com"
+            href="https://www.bet365.bet.br/hub/pt-br/open-account?affiliate=365_03711474"
             target="_blank"
             rel="noopener noreferrer"
             className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
@@ -481,6 +497,66 @@ export default function DashboardHome() {
         <p className={`text-xs ${textTertiary}`}>
           Aposte com responsabilidade. Apenas para maiores de 18 anos.
         </p>
+      </div>
+
+      {/* Grupos de palpites indicados */}
+      <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-sm`}>
+        <h2 className={`text-lg font-semibold ${textPrimary} mb-2`}>
+          Grupos de palpites indicados
+        </h2>
+        <p className={`text-xs ${textTertiary} mb-4`}>
+          Entre nos grupos recomendados para receber palpites e análises (NBA e Futebol).
+        </p>
+
+        <div className="flex flex-wrap gap-3">
+          <a
+            href="https://t.me/+TTjhM_Pm_RlkN2Nh"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
+              theme === "dark"
+                ? "bg-sky-600 hover:bg-sky-700"
+                : "bg-sky-600 hover:bg-sky-700"
+            }`}
+          >
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M21.9 4.6c.2-1-0.7-1.7-1.6-1.3L2.6 10.3c-1 .4-.9 1.8.1 2.2l4.7 1.8 1.8 5.7c.3 1.1 1.7 1.2 2.2.3l2.8-4.9 4.9 3.6c.8.6 1.9.1 2.1-.9l2.5-13.5ZM8.4 13.3l9.8-6.1c.2-.1.4.2.2.3l-8.1 7.4-.3 3.9c0 .3-.4.4-.5.1l-1.3-4-3.8-1.5c-.3-.1-.3-.5 0-.6l13.5-5.3-9.5 5.8Z" />
+            </svg>
+            <div className="flex flex-col leading-tight">
+              <span>Grupo VDT - NBA</span>
+              <span className="text-[11px] font-medium text-white/80">Palpites e análises de NBA</span>
+            </div>
+          </a>
+
+          <a
+            href="https://t.me/+cfgSnGAJ82FiYzQx"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
+              theme === "dark"
+                ? "bg-purple-600 hover:bg-purple-700"
+                : "bg-purple-600 hover:bg-purple-700"
+            }`}
+          >
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M21.9 4.6c.2-1-0.7-1.7-1.6-1.3L2.6 10.3c-1 .4-.9 1.8.1 2.2l4.7 1.8 1.8 5.7c.3 1.1 1.7 1.2 2.2.3l2.8-4.9 4.9 3.6c.8.6 1.9.1 2.1-.9l2.5-13.5ZM8.4 13.3l9.8-6.1c.2-.1.4.2.2.3l-8.1 7.4-.3 3.9c0 .3-.4.4-.5.1l-1.3-4-3.8-1.5c-.3-.1-.3-.5 0-.6l13.5-5.3-9.5 5.8Z" />
+            </svg>
+            <div className="flex flex-col leading-tight">
+              <span>MegaCantos - Futebol</span>
+              <span className="text-[11px] font-medium text-white/80">Palpites diários de Futebol</span>
+            </div>
+          </a>
+        </div>
       </div>
     </div>
   );

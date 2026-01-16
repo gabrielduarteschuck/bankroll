@@ -14,32 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<null | "google" | "github">(null);
   const router = useRouter();
-
-  async function handleOAuth(provider: "google" | "github") {
-    try {
-      setError(null);
-      setOauthLoading(provider);
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo:
-            typeof window !== "undefined"
-              ? `${window.location.origin}/dashboard`
-              : undefined,
-        },
-      });
-
-      if (oauthError) {
-        setError(oauthError.message);
-      }
-    } catch (err: any) {
-      setError(err?.message || "Erro ao iniciar login social. Tente novamente.");
-    } finally {
-      setOauthLoading(null);
-    }
-  }
 
   async function handleLogin(e?: React.FormEvent) {
     e?.preventDefault();
@@ -366,55 +341,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* social */}
-            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => handleOAuth("google")}
-                disabled={!!oauthLoading || loading}
-                className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base font-semibold text-white shadow-sm transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className="inline-flex items-center justify-center gap-3">
-                  <span className="inline-flex h-6 w-6 items-center justify-center">
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-                      <path
-                        fill="currentColor"
-                        d="M21.35 11.1H12v2.93h5.35c-.23 1.45-1.64 4.25-5.35 4.25-3.22 0-5.84-2.66-5.84-5.93s2.62-5.93 5.84-5.93c1.84 0 3.07.78 3.77 1.45l2.57-2.5C16.71 3.9 14.6 3 12 3 6.95 3 2.9 7.06 2.9 12.35S6.95 21.7 12 21.7c6.96 0 8.66-4.9 8.66-7.45 0-.5-.06-.87-.31-1.15Z"
-                      />
-                    </svg>
-                  </span>
-                  {oauthLoading === "google" ? "Conectando..." : "Login com Google"}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleOAuth("github")}
-                disabled={!!oauthLoading || loading}
-                className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base font-semibold text-white shadow-sm transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className="inline-flex items-center justify-center gap-3">
-                  <span className="inline-flex h-6 w-6 items-center justify-center">
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-                      <path
-                        fill="currentColor"
-                        d="M12 .5A11.5 11.5 0 0 0 8.37 22.9c.57.1.78-.26.78-.57v-2.1c-3.17.7-3.84-1.38-3.84-1.38-.52-1.34-1.26-1.7-1.26-1.7-1.03-.72.08-.71.08-.71 1.14.08 1.74 1.19 1.74 1.19 1.01 1.76 2.65 1.25 3.3.96.1-.75.4-1.25.72-1.54-2.53-.29-5.2-1.3-5.2-5.77 0-1.27.44-2.31 1.17-3.12-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.14 1.19a10.7 10.7 0 0 1 2.86-.39c.97 0 1.94.13 2.86.39 2.18-1.5 3.14-1.19 3.14-1.19.62 1.59.23 2.76.11 3.05.73.81 1.17 1.85 1.17 3.12 0 4.49-2.68 5.48-5.23 5.76.41.36.78 1.08.78 2.18v3.24c0 .31.2.68.79.57A11.5 11.5 0 0 0 12 .5Z"
-                      />
-                    </svg>
-                  </span>
-                  {oauthLoading === "github" ? "Conectando..." : "Login com GitHub"}
-                </span>
-              </button>
-            </div>
-
-            {/* divider */}
-            <div className="my-8 flex items-center gap-4">
-              <div className="h-px flex-1 bg-white/10" />
-              <div className="text-sm text-white/50">ou</div>
-              <div className="h-px flex-1 bg-white/10" />
-            </div>
-
-            <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-6">
+            <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="mt-8 space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-white/70">Email</label>
                 <div className="relative">
@@ -524,7 +451,7 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading || !!oauthLoading}
+                disabled={loading}
                 className="w-full rounded-2xl bg-white/10 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-black/40 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading

@@ -621,3 +621,6 @@
 {"location":"login/page.tsx:184","message":"auto login attempt result","data":{"hasError":true,"hasSession":false,"errorMessage":"Email not confirmed"},"timestamp":1768558172274,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
 {"location":"login/page.tsx:197","message":"switching to login view","data":{"email":"gabrielduarteschuck7+1@gmail.com"},"timestamp":1768558172274,"sessionId":"debug-session","runId":"run1","hypothesisId":"B"}
 {"location":"login/page.tsx:258","message":"signup finally block","data":{"loading":false},"timestamp":1768558172275,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"login/page.tsx:40","message":"handleSignUp entry","data":{"email":"schuckgabrielduarte@gmail.com","isSignUp":true},"timestamp":1768559068724,"sessionId":"debug-session","runId":"run1","hypothesisId":"B"}
+{"location":"login/page.tsx:131","message":"signup result received","data":{"hasUser":false,"hasError":true,"hasSession":false,"errorMessage":"Error sending confirmation email"},"timestamp":1768559069905,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"login/page.tsx:258","message":"signup finally block","data":{"loading":false},"timestamp":1768559069905,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}

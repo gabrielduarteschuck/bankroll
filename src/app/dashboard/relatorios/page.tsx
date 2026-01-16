@@ -179,7 +179,6 @@ export default function RelatoriosPage() {
     : 0;
   const winrate = total > 0 ? (greens / total) * 100 : 0;
   const bancaInicial = banca || 0;
-  const roi = bancaInicial > 0 ? (lucroPrejuizo / bancaInicial) * 100 : 0;
 
   // Cálculos por mercado (usando entradas filtradas)
   type DesempenhoMercado = {
@@ -482,17 +481,7 @@ export default function RelatoriosPage() {
 
       {/* Métricas principais (2 em 2) */}
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className={`rounded-xl border ${cardBorder} ${
-            theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
-          } p-4`}>
-            <div className={`text-xs font-medium ${textSecondary} mb-1`}>ROI (%)</div>
-            <div className={`text-xl font-bold ${
-              roi >= 0 ? "text-green-500" : "text-red-500"
-            }`}>
-              {roi >= 0 ? "+" : ""}{roi.toFixed(2)}%
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-4">
           <div className={`rounded-xl border ${cardBorder} ${
             theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
           } p-4`}>

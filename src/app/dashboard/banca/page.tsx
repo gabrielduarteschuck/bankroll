@@ -8,6 +8,7 @@ export default function BancaPage() {
   const { theme } = useTheme();
   const [bancaInicial, setBancaInicial] = useState<number | null>(null);
   const [bancaAtual, setBancaAtual] = useState<number | null>(null);
+  const [stakeBase, setStakeBase] = useState<number | null>(null);
   const [bancaFormatada, setBancaFormatada] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,21 +67,53 @@ export default function BancaPage() {
         return;
       }
 
-      // Busca a banca inicial do banco
-      const { data: bancaData, error: bancaError } = await supabase
-        .from("banca")
-        .select("valor")
-        .eq("user_id", user.id)
-        .single();
+      // Busca a banca (fallback automático caso a coluna stake_base ainda não exista)
+      let bancaData: any = null;
+      let bancaError: any = null;
+
+      {
+        const res = await supabase
+          .from("banca")
+          .select("valor, stake_base")
+          .eq("user_id", user.id)
+          .single();
+        bancaData = res.data;
+        bancaError = res.error;
+      }
+
+      const stakeBaseMissing =
+        !!bancaError &&
+        typeof bancaError?.message === "string" &&
+        bancaError.message.toLowerCase().includes("stake_base");
+
+      if (stakeBaseMissing) {
+        const res2 = await supabase
+          .from("banca")
+          .select("valor")
+          .eq("user_id", user.id)
+          .single();
+        bancaData = res2.data;
+        bancaError = res2.error;
+      }
 
       if (bancaError && bancaError.code !== "PGRST116") {
-        console.error("Erro ao carregar banca:", bancaError);
+        console.error("Erro ao carregar banca:", {
+          code: bancaError.code,
+          message: bancaError.message,
+          details: bancaError.details,
+          hint: bancaError.hint,
+        });
         setLoading(false);
         return;
       }
 
       const bancaInicialValue = bancaData?.valor || 0;
+      const stakeBaseValue =
+        bancaData?.stake_base !== null && bancaData?.stake_base !== undefined
+          ? Number(bancaData.stake_base)
+          : bancaInicialValue;
       setBancaInicial(bancaInicialValue);
+      setStakeBase(stakeBaseValue);
 
       // Busca entradas para calcular banca atual
       const { data: entradasData, error: entradasError } = await supabase
@@ -149,31 +182,72 @@ export default function BancaPage() {
       // Verifica se já existe uma banca
       const { data: existingBanca } = await supabase
         .from("banca")
-        .select("id")
+        .select("id, valor")
         .eq("user_id", user.id)
         .single();
 
       let error;
 
       if (existingBanca) {
-        // Atualiza banca existente
-        const { error: updateError } = await supabase
+        // Se já existe uma banca inicial registrada, NÃO sobrescreve o valor inicial.
+        // A partir daqui, o input serve para ajustar a base de stake (stake_base).
+        const hasInitialLocked =
+          existingBanca?.valor !== null &&
+          existingBanca?.valor !== undefined &&
+          Number(existingBanca.valor) > 0;
+
+        const payload: any = hasInitialLocked
+          ? {
+              stake_base: valorBanca,
+              updated_at: new Date().toISOString(),
+            }
+          : {
+              valor: valorBanca,
+              stake_base: valorBanca,
+              updated_at: new Date().toISOString(),
+            };
+
+        let { error: updateError } = await supabase
           .from("banca")
-          .update({
+          .update(payload)
+          .eq("user_id", user.id);
+
+        const stakeBaseMissing =
+          !!updateError &&
+          typeof updateError?.message === "string" &&
+          updateError.message.toLowerCase().includes("stake_base");
+
+        if (stakeBaseMissing) {
+          const payloadFallback: any = {
             valor: valorBanca,
             updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", user.id);
+          };
+          ({ error: updateError } = await supabase
+            .from("banca")
+            .update(payloadFallback)
+            .eq("user_id", user.id));
+        }
 
         error = updateError;
       } else {
-        // Insere nova banca
-        const { error: insertError } = await supabase
-          .from("banca")
-          .insert({
+        // Insere nova banca (fallback se stake_base não existir ainda)
+        let { error: insertError } = await supabase.from("banca").insert({
+          user_id: user.id,
+          valor: valorBanca,
+          stake_base: valorBanca,
+        });
+
+        const stakeBaseMissing =
+          !!insertError &&
+          typeof insertError?.message === "string" &&
+          insertError.message.toLowerCase().includes("stake_base");
+
+        if (stakeBaseMissing) {
+          ({ error: insertError } = await supabase.from("banca").insert({
             user_id: user.id,
             valor: valorBanca,
-          });
+          }));
+        }
 
         error = insertError;
       }
@@ -187,10 +261,18 @@ export default function BancaPage() {
       } else {
         // Recarrega os dados
         await loadBanca();
-        alert(`✅ Banca inicial salva com sucesso!\n\nValor: R$ ${valorBanca.toLocaleString("pt-BR", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`);
+        const isFirst = !existingBanca || !(Number(existingBanca?.valor || 0) > 0);
+        alert(
+          isFirst
+            ? `✅ Banca inicial salva com sucesso!\n\nValor: R$ ${valorBanca.toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`
+            : `✅ Base de stake salva com sucesso!\n\nValor: R$ ${valorBanca.toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}\n\nA banca inicial permanece a primeira banca definida.`
+        );
       }
     } catch (error: any) {
       console.error("Erro ao salvar banca:", error);
@@ -208,11 +290,11 @@ export default function BancaPage() {
 
     if (
       !confirm(
-        `Tem certeza que deseja reajustar a banca inicial para R$ ${bancaAtual.toLocaleString("pt-BR", {
+        `Tem certeza que deseja reajustar a base de stake para R$ ${bancaAtual.toLocaleString("pt-BR", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}?\n\n` +
-        `Isso fará com que as stakes sejam recalculadas com base na nova banca inicial.`
+        `Isso fará com que as stakes sejam recalculadas com base na nova base de stake (a banca inicial não muda).`
       )
     ) {
       return;
@@ -231,28 +313,43 @@ export default function BancaPage() {
         return;
       }
 
-      // Atualiza a banca inicial para o valor da banca atual
+      // Atualiza SOMENTE a base de stake (se a coluna existir)
       const { error } = await supabase
         .from("banca")
         .update({
-          valor: bancaAtual,
+          stake_base: bancaAtual,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id);
 
       if (error) {
-        console.error("Erro ao reajustar banca:", error);
-        alert(`Erro ao reajustar banca: ${error.message}`);
+        const stakeBaseMissing =
+          typeof error?.message === "string" &&
+          error.message.toLowerCase().includes("stake_base");
+
+        if (stakeBaseMissing) {
+          alert(
+            "Para usar o reajuste de stake, aplique a migration `0010_add_stake_base_to_banca.sql` no Supabase (coluna stake_base)."
+          );
+        } else {
+          console.error("Erro ao reajustar stake:", {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+          });
+          alert(`Erro ao reajustar stake: ${error.message}`);
+        }
       } else {
         // Recarrega os dados
         await loadBanca();
         alert(
-          `✅ Banca inicial reajustada com sucesso!\n\n` +
-          `Nova banca inicial: R$ ${bancaAtual.toLocaleString("pt-BR", {
+          `✅ Base de stake reajustada com sucesso!\n\n` +
+          `Nova base de stake: R$ ${bancaAtual.toLocaleString("pt-BR", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}\n\n` +
-          `As stakes serão calculadas com base neste novo valor.`
+          `As stakes serão calculadas com base neste novo valor (a banca inicial permanece a mesma).`
         );
       }
     } catch (error: any) {
@@ -264,8 +361,8 @@ export default function BancaPage() {
   }
 
   function calculateStake(percent: number): number {
-    if (bancaInicial === null || bancaInicial <= 0) return 0;
-    return (bancaInicial * percent) / 100;
+    if (stakeBase === null || stakeBase <= 0) return 0;
+    return (stakeBase * percent) / 100;
   }
 
   if (loading) {
@@ -318,7 +415,29 @@ export default function BancaPage() {
               <div className={`text-xs mt-1 ${
                 theme === "dark" ? "text-blue-400" : "text-blue-600"
               }`}>
-                Base para cálculo das stakes
+                Primeira banca definida pelo lead
+              </div>
+            </div>
+          )}
+
+          {/* Base de Stake */}
+          {stakeBase !== null && (
+            <div className={`mb-4 p-4 rounded-lg border-2 ${
+              theme === "dark"
+                ? "bg-zinc-800 border-zinc-700"
+                : "bg-zinc-50 border-zinc-300"
+            }`}>
+              <div className={`text-xs font-semibold mb-1 ${textSecondary}`}>
+                Base de Stake
+              </div>
+              <div className={`text-2xl font-bold ${textPrimary}`}>
+                R$ {stakeBase.toLocaleString("pt-BR", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </div>
+              <div className={`text-xs mt-1 ${textTertiary}`}>
+                Valor usado para calcular as stakes (pode ser reajustado)
               </div>
             </div>
           )}
@@ -425,7 +544,7 @@ export default function BancaPage() {
                   : "Reajustar Stake para Banca Atual"}
               </button>
               <p className={`text-xs ${textTertiary} mt-2 text-center`}>
-                Atualiza a banca inicial para o valor atual ({bancaAtual.toLocaleString("pt-BR", {
+                Atualiza apenas a base de stake para o valor atual ({bancaAtual.toLocaleString("pt-BR", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })})
@@ -440,7 +559,7 @@ export default function BancaPage() {
             Stakes Calculadas
           </h2>
           <p className={`text-xs ${textTertiary} mb-4`}>
-            Valores calculados automaticamente baseados na <strong>banca inicial</strong> (apenas para visualização)
+            Valores calculados automaticamente baseados na <strong>base de stake</strong> (apenas para visualização)
           </p>
 
           <div className="space-y-3">
@@ -473,8 +592,14 @@ export default function BancaPage() {
           </div>
 
           {(!bancaInicial || bancaInicial <= 0) && (
-            <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm">
-              Defina uma banca inicial para ver os valores calculados
+            <div
+              className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+                theme === "dark"
+                  ? "bg-amber-900/20 border-amber-800 text-amber-200"
+                  : "bg-amber-50 border-amber-300 text-amber-950"
+              }`}
+            >
+              Defina sua banca inicial para ver as stakes calculadas.
             </div>
           )}
         </div>
