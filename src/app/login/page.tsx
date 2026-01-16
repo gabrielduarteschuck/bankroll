@@ -523,16 +523,6 @@ export default function LoginPage() {
                         setPhoneDigits(digitsOnly); // trava em 11 e aceita só números
                       }}
                     />
-                    <p className="text-xs text-white/40">
-                      Número inválido. Use DDD + 9 dígitos (ex: 51 9XXXX-XXXX)
-                    </p>
-                    <p className="text-xs text-white/40">
-                      Será salvo como{" "}
-                      <span className="font-medium text-white/70">
-                        {phoneE164OrNull() || "+55XXXXXXXXXXX"}
-                      </span>
-                      .
-                    </p>
                   </div>
                 </div>
               )}
