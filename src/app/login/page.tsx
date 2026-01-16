@@ -12,16 +12,39 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<null | "google" | "github">(null);
   const router = useRouter();
+
+  async function handleOAuth(provider: "google" | "github") {
+    try {
+      setError(null);
+      setOauthLoading(provider);
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/dashboard`
+              : undefined,
+        },
+      });
+
+      if (oauthError) {
+        setError(oauthError.message);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Erro ao iniciar login social. Tente novamente.");
+    } finally {
+      setOauthLoading(null);
+    }
+  }
 
   async function handleLogin(e?: React.FormEvent) {
     e?.preventDefault();
     setLoading(true);
     setError(null);
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:17',message:'handleLogin entry',data:{email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -29,22 +52,11 @@ export default function LoginPage() {
         password,
       });
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:27',message:'signInWithPassword result',data:{hasError:!!error,hasSession:!!data?.session,errorMessage:error?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-
       if (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:30',message:'login error branch',data:{errorMessage:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         setError(error.message);
         setLoading(false);
         return;
       }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:35',message:'login success - before redirect',data:{hasSession:!!data?.session},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
 
       // Aguarda um pouco para garantir que os cookies sejam salvos
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -52,9 +64,6 @@ export default function LoginPage() {
       router.push("/dashboard");
       router.refresh();
     } catch (err: any) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:42',message:'login catch block',data:{errorMessage:err?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       setError("Erro de conexão. Verifique sua internet e tente novamente.");
       setLoading(false);
     }
@@ -65,15 +74,8 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:40',message:'handleSignUp entry',data:{email,isSignUp},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-
     // Timeout de segurança para garantir que o loading sempre pare
     const timeoutId = setTimeout(() => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:47',message:'signup timeout triggered',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       console.error("Timeout no signup - forçando parada do loading");
       setError("Tempo limite excedido. Verifique sua conexão e tente novamente.");
       setLoading(false);
@@ -149,20 +151,23 @@ export default function LoginPage() {
         clearTimeout(timeoutId);
         const duration = Date.now() - startTime;
         console.error(`❌ Erro de rede no signup após ${duration}ms:`, networkError);
+        const rawMsg = String(networkError?.message || "");
+        const isTimeout = rawMsg.toLowerCase().includes("timeout");
+        const isFetchFail =
+          rawMsg.toLowerCase().includes("failed") || rawMsg.toLowerCase().includes("fetch");
+
         setError(
-          networkError.message?.includes("fetch") || networkError.message?.includes("Failed") || networkError.message?.includes("Timeout")
-            ? "Erro de conexão. Verifique sua internet e tente novamente."
-            : networkError.message || "Erro ao criar conta. Tente novamente."
+          isTimeout
+            ? "O Supabase demorou para responder. Tente novamente em alguns instantes."
+            : isFetchFail
+              ? "Erro de conexão. Verifique sua internet e tente novamente."
+              : rawMsg || "Erro ao criar conta. Tente novamente."
         );
         setLoading(false);
         return;
       }
 
       const { data, error: signUpError } = signUpResult;
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:131',message:'signup result received',data:{hasUser:!!data?.user,hasError:!!signUpError,hasSession:!!data?.session,errorMessage:signUpError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
 
       // Log para debug
       console.log("📊 Signup result:", { 
@@ -181,7 +186,9 @@ export default function LoginPage() {
         
         // Mensagens de erro mais amigáveis
         let errorMessage = signUpError.message;
-        if (signUpError.message?.includes("fetch") || signUpError.message?.includes("Failed")) {
+        if (signUpError.message?.toLowerCase().includes("timeout")) {
+          errorMessage = "O Supabase demorou para responder. Tente novamente em alguns instantes.";
+        } else if (signUpError.message?.includes("fetch") || signUpError.message?.includes("Failed")) {
           errorMessage = "Erro de conexão. Verifique sua internet e tente novamente.";
         } else if (signUpError.message?.includes("Database error")) {
           errorMessage = "Erro no banco de dados. Execute a migration 0005_fix_signup_trigger.sql no Supabase.";
@@ -208,9 +215,6 @@ export default function LoginPage() {
       // Se temos usuário mas não temos sessão, tenta fazer login automaticamente
       // (pode funcionar se email confirmation estiver desabilitado)
       if (data?.user && !data?.session) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:176',message:'user created without session - attempting auto login',data:{hasUser:true,hasSession:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         console.log("✅ Usuário criado mas sem sessão - tentando fazer login automático");
         try {
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -218,30 +222,17 @@ export default function LoginPage() {
             password,
           });
           
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:184',message:'auto login attempt result',data:{hasError:!!signInError,hasSession:!!signInData?.session,errorMessage:signInError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-          // #endregion
-          
           if (!signInError && signInData?.session) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:187',message:'auto login success - redirecting',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
             console.log("✅ Login automático bem-sucedido - redirecionando");
             router.push("/dashboard");
             router.refresh();
             return;
           }
         } catch (loginErr: any) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:193',message:'auto login catch error',data:{errorMessage:loginErr?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-          // #endregion
           console.error("Erro ao tentar login automático:", loginErr);
         }
         
         // Se login automático falhou, volta para tela de login
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:197',message:'switching to login view',data:{email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         console.log("✅ Conta criada - voltando para tela de login");
         setIsSignUp(false);
         setPassword("");
@@ -305,9 +296,6 @@ export default function LoginPage() {
       );
       setLoading(false);
     } finally {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/3aa58c2b-f3f9-4f8d-91bd-6293b6e31719',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:258',message:'signup finally block',data:{loading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       // Garantia final: sempre limpa o timeout
       clearTimeout(timeoutId);
       // REMOVIDO: setTimeout que causava race condition
@@ -316,141 +304,247 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white">
-      <div className="w-full max-w-sm space-y-4 p-6 rounded-xl border border-zinc-800 bg-zinc-950">
-        <div className="flex justify-center pt-2">
-          <img src="/logo.svg" alt="ProStake" className="h-14 w-auto" />
-        </div>
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold">
-            {isSignUp ? "Criar Conta" : "Login"} – ProStake
-          </h1>
-          <p className="text-sm text-zinc-400">
-            {isSignUp
-              ? "Crie sua conta para começar"
-              : "Entre com sua conta existente"}
-          </p>
-        </div>
+    <div className="relative min-h-screen overflow-hidden bg-black text-white">
+      {/* background */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.10),_transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(34,197,94,0.10),_transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_left,_rgba(59,130,246,0.10),_transparent_55%)]" />
+      </div>
 
-        {/* Toggle entre Login e Sign Up */}
-        <div className="flex gap-2 p-1 rounded-lg bg-zinc-900 border border-zinc-800">
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignUp(false);
-              setError(null);
-              setTelefone("");
-              setConfirmPassword("");
-            }}
-            className={`flex-1 py-2 px-4 rounded text-sm font-medium transition-colors ${
-              !isSignUp
-                ? "bg-white text-black"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            Entrar
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignUp(true);
-              setError(null);
-            }}
-            className={`flex-1 py-2 px-4 rounded text-sm font-medium transition-colors ${
-              isSignUp
-                ? "bg-white text-black"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            Criar Conta
-          </button>
-        </div>
+      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-10">
+        <div className="w-full max-w-2xl">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl sm:p-10">
+            {/* header */}
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
+                <img src="/logo-mark.svg" alt="ProStake" className="h-10 w-10" />
+              </div>
+              <div className="flex justify-center">
+                <img src="/logo.svg" alt="ProStake" className="h-12 w-auto sm:h-14" />
+              </div>
 
-        <form
-          onSubmit={isSignUp ? handleSignUp : handleLogin}
-          className="space-y-4"
-        >
-          <input
-            type="email"
-            name="email"
-            autoComplete="email"
-            placeholder="Email"
-            className="w-full p-3 rounded bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-
-          <input
-            type="password"
-            name="password"
-            autoComplete={isSignUp ? "new-password" : "current-password"}
-            placeholder="Senha"
-            className="w-full p-3 rounded bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={isSignUp ? 6 : undefined}
-          />
-
-          {isSignUp && (
-            <>
-              <input
-                type="password"
-                name="confirmPassword"
-                autoComplete="new-password"
-                placeholder="Confirmar Senha"
-                className="w-full p-3 rounded bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-
-              <input
-                type="tel"
-                name="telefone"
-                autoComplete="tel"
-                placeholder="Número de Celular (ex: 11987654321)"
-                className="w-full p-3 rounded bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white"
-                value={telefone}
-                onChange={(e) => {
-                  // Permite apenas números e alguns caracteres de formatação
-                  const value = e.target.value.replace(/[^\d()\s-]/g, "");
-                  setTelefone(value);
-                }}
-                required
-              />
-              <p className="text-xs text-zinc-500">
-                Digite apenas números (ex: 11987654321)
-              </p>
-
-              <p className="text-xs text-zinc-500">
-                A senha deve ter pelo menos 6 caracteres
-              </p>
-            </>
-          )}
-
-          {error && (
-            <div className="p-3 rounded bg-red-900/20 border border-red-500/50">
-              <p className="text-sm text-red-400">{error}</p>
+              <div className="space-y-2">
+                <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+                  {isSignUp ? "Criar Conta" : "Login"}
+                </h1>
+                <p className="text-base text-white/70">
+                  {isSignUp ? (
+                    <>
+                      Já tem uma conta?{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSignUp(false);
+                          setError(null);
+                          setTelefone("");
+                          setConfirmPassword("");
+                        }}
+                        className="cursor-pointer font-semibold text-white underline underline-offset-4 hover:opacity-90"
+                      >
+                        Entrar
+                      </button>
+                      .
+                    </>
+                  ) : (
+                    <>
+                      Não tem uma conta?{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSignUp(true);
+                          setError(null);
+                        }}
+                        className="cursor-pointer font-semibold text-white underline underline-offset-4 hover:opacity-90"
+                      >
+                        Criar conta
+                      </button>
+                      .
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full p-3 rounded bg-white text-black font-semibold hover:bg-zinc-200 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading
-              ? isSignUp
-                ? "Criando conta..."
-                : "Entrando..."
-              : isSignUp
-              ? "Criar Conta"
-              : "Entrar"}
-          </button>
-        </form>
+            {/* social */}
+            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => handleOAuth("google")}
+                disabled={!!oauthLoading || loading}
+                className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base font-semibold text-white shadow-sm transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="inline-flex items-center justify-center gap-3">
+                  <span className="inline-flex h-6 w-6 items-center justify-center">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                      <path
+                        fill="currentColor"
+                        d="M21.35 11.1H12v2.93h5.35c-.23 1.45-1.64 4.25-5.35 4.25-3.22 0-5.84-2.66-5.84-5.93s2.62-5.93 5.84-5.93c1.84 0 3.07.78 3.77 1.45l2.57-2.5C16.71 3.9 14.6 3 12 3 6.95 3 2.9 7.06 2.9 12.35S6.95 21.7 12 21.7c6.96 0 8.66-4.9 8.66-7.45 0-.5-.06-.87-.31-1.15Z"
+                      />
+                    </svg>
+                  </span>
+                  {oauthLoading === "google" ? "Conectando..." : "Login com Google"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOAuth("github")}
+                disabled={!!oauthLoading || loading}
+                className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base font-semibold text-white shadow-sm transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="inline-flex items-center justify-center gap-3">
+                  <span className="inline-flex h-6 w-6 items-center justify-center">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                      <path
+                        fill="currentColor"
+                        d="M12 .5A11.5 11.5 0 0 0 8.37 22.9c.57.1.78-.26.78-.57v-2.1c-3.17.7-3.84-1.38-3.84-1.38-.52-1.34-1.26-1.7-1.26-1.7-1.03-.72.08-.71.08-.71 1.14.08 1.74 1.19 1.74 1.19 1.01 1.76 2.65 1.25 3.3.96.1-.75.4-1.25.72-1.54-2.53-.29-5.2-1.3-5.2-5.77 0-1.27.44-2.31 1.17-3.12-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.14 1.19a10.7 10.7 0 0 1 2.86-.39c.97 0 1.94.13 2.86.39 2.18-1.5 3.14-1.19 3.14-1.19.62 1.59.23 2.76.11 3.05.73.81 1.17 1.85 1.17 3.12 0 4.49-2.68 5.48-5.23 5.76.41.36.78 1.08.78 2.18v3.24c0 .31.2.68.79.57A11.5 11.5 0 0 0 12 .5Z"
+                      />
+                    </svg>
+                  </span>
+                  {oauthLoading === "github" ? "Conectando..." : "Login com GitHub"}
+                </span>
+              </button>
+            </div>
+
+            {/* divider */}
+            <div className="my-8 flex items-center gap-4">
+              <div className="h-px flex-1 bg-white/10" />
+              <div className="text-sm text-white/50">ou</div>
+              <div className="h-px flex-1 bg-white/10" />
+            </div>
+
+            <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70">Email</label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    name="email"
+                    autoComplete="email"
+                    placeholder="seuemail@exemplo.com"
+                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none ring-0 transition focus:border-white/20 focus:bg-black/40"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70">Senha</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    autoComplete={isSignUp ? "new-password" : "current-password"}
+                    placeholder="********"
+                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 pr-12 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={isSignUp ? 6 : undefined}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-white/60 transition hover:bg-white/10 hover:text-white cursor-pointer"
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                      <path
+                        fill="currentColor"
+                        d="M12 5c-5.5 0-9.6 4.2-10.8 6 .9 1.3 4.9 8 10.8 8 5.9 0 9.9-6.7 10.8-8C21.6 9.2 17.5 5 12 5Zm0 12c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {isSignUp && (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-white/70">Confirmar senha</label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        name="confirmPassword"
+                        autoComplete="new-password"
+                        placeholder="********"
+                        className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 pr-12 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        minLength={6}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-white/60 transition hover:bg-white/10 hover:text-white cursor-pointer"
+                        aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
+                      >
+                        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                          <path
+                            fill="currentColor"
+                            d="M12 5c-5.5 0-9.6 4.2-10.8 6 .9 1.3 4.9 8 10.8 8 5.9 0 9.9-6.7 10.8-8C21.6 9.2 17.5 5 12 5Zm0 12c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="text-xs text-white/40">A senha deve ter pelo menos 6 caracteres.</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-white/70">Celular</label>
+                    <input
+                      type="tel"
+                      name="telefone"
+                      autoComplete="tel"
+                      placeholder="(11) 98765-4321"
+                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
+                      value={telefone}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^\d()\s-]/g, "");
+                        setTelefone(value);
+                      }}
+                      required
+                    />
+                    <p className="text-xs text-white/40">
+                      Digite apenas números (ex: 11987654321).
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+                  <p className="text-sm text-red-200">{error}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !!oauthLoading}
+                className="w-full rounded-2xl bg-white/10 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-black/40 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading
+                  ? isSignUp
+                    ? "Criando conta..."
+                    : "Entrando..."
+                  : isSignUp
+                    ? "Criar Conta"
+                    : "Entrar"}
+              </button>
+
+              <p className="pt-2 text-center text-sm text-white/50">
+                Ao continuar, você concorda com nossos{" "}
+                <span className="underline underline-offset-4">Termos</span>,{" "}
+                <span className="underline underline-offset-4">Uso Aceitável</span>{" "}
+                e <span className="underline underline-offset-4">Política de Privacidade</span>.
+              </p>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   );
