@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
@@ -20,8 +21,20 @@ export default function LoginPage() {
     e?.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
+      if (!email.trim()) {
+        setError("Informe seu email.");
+        setLoading(false);
+        return;
+      }
+      if (!password.trim()) {
+        setError("Informe sua senha.");
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -48,6 +61,7 @@ export default function LoginPage() {
     e?.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     // Timeout de segurança para garantir que o loading sempre pare
     const timeoutId = setTimeout(() => {
@@ -58,6 +72,20 @@ export default function LoginPage() {
 
     try {
       // Validações
+      if (!email.trim()) {
+        clearTimeout(timeoutId);
+        setError("Informe seu email.");
+        setLoading(false);
+        return;
+      }
+
+      if (!password.trim()) {
+        clearTimeout(timeoutId);
+        setError("Informe uma senha.");
+        setLoading(false);
+        return;
+      }
+
       if (password.length < 6) {
         clearTimeout(timeoutId);
         setError("A senha deve ter pelo menos 6 caracteres");
@@ -209,6 +237,9 @@ export default function LoginPage() {
         
         // Se login automático falhou, volta para tela de login
         console.log("✅ Conta criada - voltando para tela de login");
+        setSuccess(
+          "Conta criada com sucesso! Enviamos um email de confirmação. Após confirmar, volte aqui e faça login."
+        );
         setIsSignUp(false);
         setPassword("");
         setConfirmPassword("");
@@ -241,6 +272,9 @@ export default function LoginPage() {
         
         // Se login automático falhou, volta para tela de login
         console.log("✅ Conta criada - voltando para tela de login");
+      setSuccess(
+        "Conta criada com sucesso! Enviamos um email de confirmação. Após confirmar, volte aqui e faça login."
+      );
         setIsSignUp(false);
         setPassword("");
         setConfirmPassword("");
@@ -255,6 +289,9 @@ export default function LoginPage() {
       console.warn("⚠️ Signup sem usuário retornado e sem erro claro");
       console.warn("Dados completos:", { data, signUpError });
       // Volta para tela de login mesmo assim
+      setSuccess(
+        "Conta criada. Se sua confirmação por email estiver ativa, verifique sua caixa de entrada e spam."
+      );
       setIsSignUp(false);
       setPassword("");
       setConfirmPassword("");
@@ -312,6 +349,7 @@ export default function LoginPage() {
                         onClick={() => {
                           setIsSignUp(false);
                           setError(null);
+                          setSuccess(null);
                           setTelefone("");
                           setConfirmPassword("");
                         }}
@@ -329,6 +367,7 @@ export default function LoginPage() {
                         onClick={() => {
                           setIsSignUp(true);
                           setError(null);
+                          setSuccess(null);
                         }}
                         className="cursor-pointer font-semibold text-white underline underline-offset-4 hover:opacity-90"
                       >
@@ -353,7 +392,6 @@ export default function LoginPage() {
                     className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none ring-0 transition focus:border-white/20 focus:bg-black/40"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
                   />
                 </div>
               </div>
@@ -369,8 +407,6 @@ export default function LoginPage() {
                     className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 pr-12 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={isSignUp ? 6 : undefined}
                   />
                   <button
                     type="button"
@@ -401,8 +437,6 @@ export default function LoginPage() {
                         className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 pr-12 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        minLength={6}
                       />
                       <button
                         type="button"
@@ -434,12 +468,17 @@ export default function LoginPage() {
                         const value = e.target.value.replace(/[^\d()\s-]/g, "");
                         setTelefone(value);
                       }}
-                      required
                     />
                     <p className="text-xs text-white/40">
                       Digite apenas números (ex: 11987654321).
                     </p>
                   </div>
+                </div>
+              )}
+
+              {success && (
+                <div className="rounded-2xl border border-green-500/25 bg-green-500/10 px-4 py-3">
+                  <p className="text-sm text-green-100">{success}</p>
                 </div>
               )}
 
