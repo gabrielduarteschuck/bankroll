@@ -431,7 +431,7 @@ export default function DashboardHome() {
               {lucroBanca.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
             </div>
             <div className={`text-xs ${textTertiary}`}>
-              {lucroBanca >= 0 ? "Lucro" : "Prejuízo"} em relação à banca inicial
+              Lucro/Prejuizo em relação a banca inicial
             </div>
           </div>
         </div>

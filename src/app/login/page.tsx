@@ -24,6 +24,7 @@ const COUNTRY_OPTIONS: CountryOption[] = [
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   // Telefone (opcional) com UX de país/DDD e normalização E.164
@@ -101,6 +102,13 @@ export default function LoginPage() {
 
     try {
       // Validações
+      if (!fullName.trim()) {
+        clearTimeout(timeoutId);
+        setError("Informe seu nome.");
+        setLoading(false);
+        return;
+      }
+
       if (!email.trim()) {
         clearTimeout(timeoutId);
         setError("Informe seu email.");
@@ -129,22 +137,26 @@ export default function LoginPage() {
         return;
       }
 
-      // Telefone é opcional — se informado, valida e normaliza para E.164
+      // Telefone é obrigatório — valida e normaliza para E.164 (sem verificação)
       const phoneDigits = phoneNational.replace(/\D/g, "");
       const phoneE164 = phoneE164OrNull();
-      if (phoneDigits) {
-        if (phoneDigits.length < selectedCountry.minDigits) {
-          clearTimeout(timeoutId);
-          setError("Número de celular inválido (curto demais).");
-          setLoading(false);
-          return;
-        }
-        if (phoneDigits.length > selectedCountry.maxDigits) {
-          clearTimeout(timeoutId);
-          setError("Número de celular inválido (longo demais).");
-          setLoading(false);
-          return;
-        }
+      if (!phoneDigits) {
+        clearTimeout(timeoutId);
+        setError("Informe seu número de celular.");
+        setLoading(false);
+        return;
+      }
+      if (phoneDigits.length < selectedCountry.minDigits) {
+        clearTimeout(timeoutId);
+        setError("Número de celular inválido (curto demais).");
+        setLoading(false);
+        return;
+      }
+      if (phoneDigits.length > selectedCountry.maxDigits) {
+        clearTimeout(timeoutId);
+        setError("Número de celular inválido (longo demais).");
+        setLoading(false);
+        return;
       }
 
       // Verifica se o Supabase está configurado
@@ -164,7 +176,7 @@ export default function LoginPage() {
 
       // DEBUG (temporário): input do signup
       const phone = phoneE164OrNull();
-      console.log("SIGNUP INPUT", { email, password, phone });
+      console.log("SIGNUP INPUT", { email, password, phone, fullName });
 
       console.log("🚀 Iniciando signup...", {
         email,
@@ -183,7 +195,8 @@ export default function LoginPage() {
             options: {
               data: {
                 // Importante: telefone NÃO vai como campo principal; apenas metadata.
-                ...(phone ? { phone } : {}),
+                ...(phone ? { phone, telefone: phone } : {}),
+                nome: fullName.trim(),
               },
               emailRedirectTo: redirectTo,
             },
@@ -269,6 +282,7 @@ export default function LoginPage() {
           "Conta criada com sucesso! Enviamos um email de confirmação. Após confirmar, volte aqui e faça login."
         );
         setIsSignUp(false);
+        setFullName("");
         setPassword("");
         setConfirmPassword("");
         setPhoneNational("");
@@ -304,6 +318,7 @@ export default function LoginPage() {
         "Conta criada com sucesso! Enviamos um email de confirmação. Após confirmar, volte aqui e faça login."
       );
         setIsSignUp(false);
+      setFullName("");
         setPassword("");
         setConfirmPassword("");
       setPhoneNational("");
@@ -321,6 +336,7 @@ export default function LoginPage() {
         "Conta criada. Se sua confirmação por email estiver ativa, verifique sua caixa de entrada e spam."
       );
       setIsSignUp(false);
+      setFullName("");
       setPassword("");
       setConfirmPassword("");
       setPhoneNational("");
@@ -379,6 +395,7 @@ export default function LoginPage() {
                           setIsSignUp(false);
                           setError(null);
                           setSuccess(null);
+                          setFullName("");
                           setPhoneNational("");
                           setConfirmPassword("");
                         }}
@@ -397,6 +414,7 @@ export default function LoginPage() {
                           setIsSignUp(true);
                           setError(null);
                           setSuccess(null);
+                          setFullName("");
                         }}
                         className="cursor-pointer font-semibold text-white underline underline-offset-4 hover:opacity-90"
                       >
@@ -456,6 +474,19 @@ export default function LoginPage() {
               {isSignUp && (
                 <div className="space-y-6">
                   <div className="space-y-2">
+                    <label className="text-sm font-medium text-white/70">Nome</label>
+                    <input
+                      type="text"
+                      name="name"
+                      autoComplete="name"
+                      placeholder="Seu nome"
+                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
                     <label className="text-sm font-medium text-white/70">Confirmar senha</label>
                     <div className="relative">
                       <input
@@ -485,9 +516,7 @@ export default function LoginPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">
-                      Celular (opcional)
-                    </label>
+                    <label className="text-sm font-medium text-white/70">Celular</label>
                     <div className="flex gap-2">
                       <select
                         value={countryCode}

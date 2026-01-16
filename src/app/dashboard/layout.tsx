@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import UserMenu from "@/components/UserMenu";
 import ThemeToggle from "@/components/ThemeToggle";
+import FeedbackWidget from "@/components/FeedbackWidget";
 import { useTheme } from "@/contexts/ThemeContext";
 
 function NavItem({
@@ -72,6 +73,7 @@ export default function DashboardLayout({
     <div className={`min-h-screen ${
       theme === "dark" ? "bg-zinc-950" : "bg-zinc-50"
     }`}>
+      <FeedbackWidget />
       {/* Mobile Header */}
       <div className={`md:hidden flex items-center justify-between p-4 border-b ${
         theme === "dark" ? "border-zinc-800 bg-zinc-900" : "border-zinc-200 bg-white"
