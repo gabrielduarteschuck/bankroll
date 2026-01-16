@@ -125,11 +125,6 @@ export default function DashboardLayout({
                 ProStake
               </div>
             </div>
-            <div className={`mt-1 text-xs ${
-              theme === "dark" ? "text-zinc-400" : "text-zinc-500"
-            }`}>
-              Painel interno
-            </div>
           </div>
 
           <nav className="space-y-1 flex-1">
@@ -138,6 +133,7 @@ export default function DashboardLayout({
             <NavItem href="/dashboard/minhas-entradas" label="Minhas Entradas" />
             <NavItem href="/dashboard/banca" label="Banca" />
             <NavItem href="/dashboard/relatorios" label="Relatórios" />
+            <NavItem href="/dashboard/dicas" label="Dicas para Iniciantes" />
             <NavItem href="/dashboard/como-funciona" label="Como funciona" />
             <NavItem href="/dashboard/ajustes" label="Ajustes" />
           </nav>
@@ -175,11 +171,6 @@ export default function DashboardLayout({
                 ProStake
               </div>
             </div>
-            <div className={`mt-1 text-xs ${
-              theme === "dark" ? "text-zinc-400" : "text-zinc-500"
-            }`}>
-              Painel interno
-            </div>
           </div>
 
           <nav className="space-y-1">
@@ -188,6 +179,7 @@ export default function DashboardLayout({
             <NavItem href="/dashboard/minhas-entradas" label="Minhas Entradas" />
             <NavItem href="/dashboard/banca" label="Banca" />
             <NavItem href="/dashboard/relatorios" label="Relatórios" />
+            <NavItem href="/dashboard/dicas" label="Dicas para Iniciantes" />
             <NavItem href="/dashboard/como-funciona" label="Como funciona" />
             <NavItem href="/dashboard/ajustes" label="Ajustes" />
           </nav>

@@ -25,6 +25,8 @@ type Entrada = {
   odd: number;
   esporte: string | null;
   mercado: string | null;
+  observacoes?: string | null;
+  favorita?: boolean | null;
   resultado: "green" | "red" | "pendente";
   valor_resultado: number | null;
   created_at: string;
@@ -50,6 +52,7 @@ export default function MinhasEntradasPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("todos");
+  const [apenasFavoritas, setApenasFavoritas] = useState(false);
   const [dataInicio, setDataInicio] = useState<string>("");
   const [dataFim, setDataFim] = useState<string>("");
 
@@ -69,6 +72,7 @@ export default function MinhasEntradasPage() {
   const [editEsporte, setEditEsporte] = useState<string>("");
   const [editEsporteCustomizado, setEditEsporteCustomizado] = useState<string>("");
   const [editMercadoTexto, setEditMercadoTexto] = useState<string>("");
+  const [editObservacoes, setEditObservacoes] = useState<string>("");
   const [editResultado, setEditResultado] = useState<"green" | "red" | "pendente">("pendente");
   const [editValorResultado, setEditValorResultado] = useState<string>("");
 
@@ -78,7 +82,7 @@ export default function MinhasEntradasPage() {
 
   useEffect(() => {
     filtrarEntradas();
-  }, [entradas, filtroPeriodo, dataInicio, dataFim]);
+  }, [entradas, filtroPeriodo, apenasFavoritas, dataInicio, dataFim]);
 
   function getDateRange() {
     const hoje = new Date();
@@ -143,7 +147,10 @@ export default function MinhasEntradasPage() {
 
   function filtrarEntradas() {
     if (filtroPeriodo === "todos") {
-      setEntradasFiltradas(entradas);
+      const base = apenasFavoritas
+        ? entradas.filter((e) => e.favorita === true)
+        : entradas;
+      setEntradasFiltradas(base);
       setPaginaAtual(1);
       return;
     }
@@ -155,13 +162,45 @@ export default function MinhasEntradasPage() {
       return;
     }
 
-    const filtradas = entradas.filter((entrada) => {
+    let filtradas = entradas.filter((entrada) => {
       const dataEntrada = new Date(entrada.created_at);
       return dataEntrada >= new Date(dateRange.inicio) && dataEntrada <= new Date(dateRange.fim);
     });
 
+    if (apenasFavoritas) {
+      filtradas = filtradas.filter((e) => e.favorita === true);
+    }
+
     setEntradasFiltradas(filtradas);
     setPaginaAtual(1);
+  }
+
+  async function toggleFavorita(entrada: Entrada) {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const newValue = !(entrada.favorita === true);
+      const { error } = await supabase
+        .from("entradas")
+        .update({ favorita: newValue, updated_at: new Date().toISOString() })
+        .eq("id", entrada.id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        alert("Erro ao atualizar favorito");
+        return;
+      }
+
+      setEntradas((prev) =>
+        prev.map((e) => (e.id === entrada.id ? { ...e, favorita: newValue } : e))
+      );
+    } catch {
+      alert("Erro ao atualizar favorito");
+    }
   }
 
   const ITENS_POR_PAGINA = 20;
@@ -212,6 +251,7 @@ export default function MinhasEntradasPage() {
     setEditEsporte(ESPORTES_PREDEFINIDOS.includes(esporteValue as any) ? esporteValue : "outros");
     setEditEsporteCustomizado(ESPORTES_PREDEFINIDOS.includes(esporteValue as any) ? "" : esporteValue);
     setEditMercadoTexto(entrada.mercado || "");
+    setEditObservacoes(entrada.observacoes || "");
     setEditResultado(entrada.resultado);
     setEditValorResultado(entrada.valor_resultado?.toString() || "");
   }
@@ -223,6 +263,7 @@ export default function MinhasEntradasPage() {
     setEditEsporte("");
     setEditEsporteCustomizado("");
     setEditMercadoTexto("");
+    setEditObservacoes("");
     setEditResultado("pendente");
     setEditValorResultado("");
   }
@@ -246,6 +287,7 @@ export default function MinhasEntradasPage() {
       const esporteFinal =
         editEsporte === "outros" ? editEsporteCustomizado.trim() : editEsporte.trim();
       const mercadoFinal = editMercadoTexto.trim() ? editMercadoTexto.trim() : null;
+      const observacoesFinal = editObservacoes.trim() ? editObservacoes.trim() : null;
       const valorResultadoFinal = editValorResultado
         ? parseFloat(editValorResultado.replace(",", "."))
         : null;
@@ -293,6 +335,7 @@ export default function MinhasEntradasPage() {
           odd: oddValue,
           esporte: esporteFinal,
           mercado: mercadoFinal,
+          observacoes: observacoesFinal,
           resultado: editResultado,
           valor_resultado: novoValorResultado,
           updated_at: new Date().toISOString(),
@@ -489,6 +532,36 @@ export default function MinhasEntradasPage() {
               />
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={() => setApenasFavoritas((v) => !v)}
+            className={`ml-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer border ${
+              apenasFavoritas
+                ? theme === "dark"
+                  ? "bg-amber-900/20 border-amber-800 text-amber-200"
+                  : "bg-amber-50 border-amber-300 text-amber-900"
+                : theme === "dark"
+                ? "bg-zinc-800 border-zinc-700 text-zinc-200 hover:bg-zinc-700"
+                : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200"
+            }`}
+            aria-pressed={apenasFavoritas}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className={`h-4 w-4 ${apenasFavoritas ? "text-amber-500" : ""}`}
+              fill={apenasFavoritas ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557L3.04 10.385a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+              />
+            </svg>
+            Apenas favoritas
+          </button>
         </div>
       </div>
 
@@ -590,6 +663,18 @@ export default function MinhasEntradasPage() {
                         className={`w-full p-2 rounded border ${inputBorder} ${inputBg} text-sm ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
                       />
                     </div>
+                    <div className="md:col-span-2">
+                      <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
+                        Descrição (opcional)
+                      </label>
+                      <textarea
+                        placeholder="Ex: Motivo da entrada, leitura do jogo, plano de gestão..."
+                        value={editObservacoes}
+                        onChange={(e) => setEditObservacoes(e.target.value)}
+                        rows={3}
+                        className={`w-full p-2 rounded border ${inputBorder} ${inputBg} text-sm ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
+                      />
+                    </div>
                     <div>
                       <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
                         Resultado
@@ -663,8 +748,41 @@ export default function MinhasEntradasPage() {
                           Mercado: {entrada.mercado}
                         </div>
                       ) : null}
+                      {entrada.observacoes ? (
+                        <div className={`text-xs ${textSecondary} mt-1`}>
+                          Descrição: {entrada.observacoes}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleFavorita(entrada)}
+                        className={`px-3 py-1 rounded text-xs font-medium cursor-pointer transition-colors border ${
+                          entrada.favorita
+                            ? theme === "dark"
+                              ? "bg-amber-900/20 text-amber-200 hover:bg-amber-900/30 border-amber-800"
+                              : "bg-amber-50 text-amber-900 hover:bg-amber-100 border-amber-300"
+                            : theme === "dark"
+                            ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border-zinc-700"
+                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-zinc-200"
+                        }`}
+                        aria-label={entrada.favorita ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4"
+                          fill={entrada.favorita ? "currentColor" : "none"}
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557L3.04 10.385a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                          />
+                        </svg>
+                      </button>
                       <button
                         onClick={() => startEdit(entrada)}
                         className={`px-3 py-1 rounded text-xs font-medium cursor-pointer transition-colors ${

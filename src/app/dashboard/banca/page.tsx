@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
 
+type StakePersonalizada = {
+  id: string;
+  nome: string;
+  percent: number;
+};
+
 export default function BancaPage() {
   const { theme } = useTheme();
   const [bancaInicial, setBancaInicial] = useState<number | null>(null);
@@ -13,6 +19,12 @@ export default function BancaPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [reajustando, setReajustando] = useState(false);
+  const [stakesPersonalizadas, setStakesPersonalizadas] = useState<StakePersonalizada[]>([]);
+  const [stakesPersonalizadasMissing, setStakesPersonalizadasMissing] = useState(false);
+  const [modalStakeOpen, setModalStakeOpen] = useState(false);
+  const [stakeNome] = useState("stake");
+  const [stakePercentInput, setStakePercentInput] = useState<string>("");
+  const [savingStake, setSavingStake] = useState(false);
 
   // Classes de tema
   const textPrimary = theme === "dark" ? "text-white" : "text-zinc-900";
@@ -53,7 +65,112 @@ export default function BancaPage() {
 
   useEffect(() => {
     loadBanca();
+    loadStakesPersonalizadas();
   }, []);
+
+  async function loadStakesPersonalizadas() {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("stakes_personalizadas")
+        .select("id, nome, percent")
+        .eq("user_id", user.id)
+        .order("percent", { ascending: true });
+
+      if (error) {
+        const msg = String(error?.message || "").toLowerCase();
+        const missing =
+          msg.includes("relation") ||
+          msg.includes("does not exist") ||
+          msg.includes("could not find the table") ||
+          msg.includes("stakes_personalizadas");
+        if (missing) {
+          setStakesPersonalizadasMissing(true);
+          setStakesPersonalizadas([]);
+          return;
+        }
+        // best-effort: não quebra a tela
+        setStakesPersonalizadas([]);
+        return;
+      }
+
+      setStakesPersonalizadasMissing(false);
+      setStakesPersonalizadas(
+        (data || []).map((r: any) => ({
+          id: String(r.id),
+          nome: String(r.nome || "stake"),
+          percent: Number(r.percent),
+        }))
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleCreateStakePersonalizada() {
+    setSavingStake(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert("Usuário não autenticado");
+        return;
+      }
+
+      const percent = parseFloat(stakePercentInput.replace(",", "."));
+      if (isNaN(percent) || percent <= 0 || percent > 100) {
+        alert("Informe um percentual válido (entre 0 e 100).");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("stakes_personalizadas")
+        .upsert(
+          {
+            user_id: user.id,
+            nome: stakeNome,
+            percent,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,percent" }
+        );
+
+      if (error) {
+        const msg = String(error?.message || "");
+        if (
+          msg.includes("Could not find the table") ||
+          msg.includes("relation") ||
+          msg.includes("does not exist")
+        ) {
+          setStakesPersonalizadasMissing(true);
+          alert(
+            `❌ Tabela 'stakes_personalizadas' não encontrada!\n\n` +
+              `📋 Para resolver:\n` +
+              `1. Acesse o Supabase (SQL Editor)\n` +
+              `2. Execute a migration "0012_stakes_personalizadas.sql" (pasta supabase/migrations)\n\n` +
+              `Isso cria a tabela e as policies.`
+          );
+          return;
+        }
+        alert(`Erro ao salvar stake personalizada: ${error.message}`);
+        return;
+      }
+
+      await loadStakesPersonalizadas();
+      setModalStakeOpen(false);
+      setStakePercentInput("");
+      alert("✅ Stake personalizada salva com sucesso!");
+    } finally {
+      setSavingStake(false);
+    }
+  }
 
   async function loadBanca() {
     setLoading(true);
@@ -555,9 +672,20 @@ export default function BancaPage() {
 
         {/* Visualização das Stakes */}
         <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-sm`}>
-          <h2 className={`text-lg font-semibold ${textPrimary} mb-4`}>
-            Stakes Calculadas
-          </h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className={`text-lg font-semibold ${textPrimary}`}>Stakes Calculadas</h2>
+            <button
+              type="button"
+              onClick={() => setModalStakeOpen(true)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors ${
+                theme === "dark"
+                  ? "bg-zinc-700 text-white hover:bg-zinc-600"
+                  : "bg-zinc-900 text-white hover:bg-zinc-800"
+              }`}
+            >
+              Criar stake personalizada
+            </button>
+          </div>
           <p className={`text-xs ${textTertiary} mb-4`}>
             Valores calculados automaticamente baseados na <strong>base de stake</strong> (apenas para visualização)
           </p>
@@ -591,6 +719,39 @@ export default function BancaPage() {
             })}
           </div>
 
+          {!stakesPersonalizadasMissing && stakesPersonalizadas.length > 0 && (
+            <div className={`mt-6 pt-6 border-t ${cardBorder}`}>
+              <div className="space-y-3">
+                {stakesPersonalizadas.map((s) => {
+                  const valor = calculateStake(s.percent);
+                  return (
+                    <div
+                      key={s.id}
+                      className={`flex items-center justify-between p-3 rounded-lg ${
+                        theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
+                      } border ${cardBorder}`}
+                    >
+                      <div>
+                        <div className={`text-sm font-medium ${textSecondary}`}>
+                          {s.percent}%
+                        </div>
+                        <div className={`text-xs ${textTertiary}`}>{s.nome}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-lg font-semibold ${textPrimary}`}>
+                          R$ {valor.toLocaleString("pt-BR", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {(!bancaInicial || bancaInicial <= 0) && (
             <div
               className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
@@ -604,6 +765,101 @@ export default function BancaPage() {
           )}
         </div>
       </div>
+
+      {modalStakeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            onClick={() => {
+              if (!savingStake) {
+                setModalStakeOpen(false);
+                setStakePercentInput("");
+              }
+            }}
+            className="absolute inset-0 bg-black/40"
+            aria-label="Fechar modal"
+          />
+
+          <div
+            className={`relative w-full max-w-lg rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-xl`}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="mb-4">
+              <h3 className={`text-lg font-semibold ${textPrimary}`}>
+                Criar stake personalizada
+              </h3>
+              <p className={`mt-1 text-sm ${textSecondary}`}>
+                Defina uma stake em % da sua banca (base de stake).
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+                  Nome
+                </label>
+                <input
+                  value={stakeNome}
+                  disabled
+                  className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} opacity-70`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+                  Valor da stake (% da banca)
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Ex: 1.5"
+                  value={stakePercentInput}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d,.-]/g, "");
+                    setStakePercentInput(value);
+                  }}
+                  className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent`}
+                />
+                <p className={`text-xs ${textTertiary} mt-2`}>
+                  Exemplo: 1 significa 1% da base de stake.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!savingStake) {
+                    setModalStakeOpen(false);
+                    setStakePercentInput("");
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors ${
+                  theme === "dark"
+                    ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                }`}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateStakePersonalizada}
+                disabled={savingStake}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-colors ${
+                  theme === "dark"
+                    ? "bg-zinc-700 text-white hover:bg-zinc-600"
+                    : "bg-zinc-900 text-white hover:bg-zinc-800"
+                }`}
+              >
+                {savingStake ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -345,24 +345,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black text-white">
+    <div className="relative min-h-screen overflow-hidden bg-zinc-50 text-zinc-900">
       {/* background */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.10),_transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(0,0,0,0.06),_transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(34,197,94,0.10),_transparent_55%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_left,_rgba(59,130,246,0.10),_transparent_55%)]" />
       </div>
 
       <div className="relative mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-10">
         <div className="w-full max-w-2xl">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl sm:p-10">
+          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-10">
             {/* header */}
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="relative -mt-2 w-full max-w-2xl h-28 sm:h-44">
+              <div className="relative -mt-2 w-full max-w-2xl h-56 sm:h-[22rem]">
                 <img
                   src="/imagens/logo%20prostake%20fundo%20transparemte.png"
                   alt="ProStake"
-                  className="absolute inset-0 h-full w-full object-contain scale-[1.55] sm:scale-[1.65]"
+                  className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain scale-[1.55] sm:scale-[1.65]"
                 />
               </div>
 
@@ -370,7 +370,7 @@ export default function LoginPage() {
                 <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
                   {isSignUp ? "Criar Conta" : "Login"}
                 </h1>
-                <p className="text-base text-white/70">
+                <p className="text-base text-zinc-600">
                   {isSignUp ? (
                     <>
                       Já tem uma conta?{" "}
@@ -384,7 +384,7 @@ export default function LoginPage() {
                           setPhoneDigits("");
                           setConfirmPassword("");
                         }}
-                        className="cursor-pointer font-semibold text-white underline underline-offset-4 hover:opacity-90"
+                        className="cursor-pointer font-semibold text-zinc-900 underline underline-offset-4 hover:text-zinc-700"
                       >
                         Entrar
                       </button>
@@ -401,7 +401,7 @@ export default function LoginPage() {
                           setSuccess(null);
                           setFullName("");
                         }}
-                        className="cursor-pointer font-semibold text-white underline underline-offset-4 hover:opacity-90"
+                        className="cursor-pointer font-semibold text-zinc-900 underline underline-offset-4 hover:text-zinc-700"
                       >
                         Criar conta
                       </button>
@@ -415,13 +415,13 @@ export default function LoginPage() {
             <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="mt-8 space-y-6">
               {isSignUp && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/70">Nome</label>
+                  <label className="text-sm font-medium text-zinc-600">Nome</label>
                   <input
                     type="text"
                     name="name"
                     autoComplete="name"
                     placeholder="Seu nome"
-                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
+                    className="w-full rounded-2xl border border-zinc-300 bg-white px-5 py-4 text-zinc-900 placeholder-zinc-400 shadow-inner outline-none transition focus:border-zinc-400"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                   />
@@ -429,14 +429,14 @@ export default function LoginPage() {
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-white/70">Email</label>
+                <label className="text-sm font-medium text-zinc-600">Email</label>
                 <div className="relative">
                   <input
                     type="email"
                     name="email"
                     autoComplete="email"
                     placeholder="seuemail@exemplo.com"
-                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none ring-0 transition focus:border-white/20 focus:bg-black/40"
+                    className="w-full rounded-2xl border border-zinc-300 bg-white px-5 py-4 text-zinc-900 placeholder-zinc-400 shadow-inner outline-none ring-0 transition focus:border-zinc-400"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
@@ -444,21 +444,21 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-white/70">Senha</label>
+                <label className="text-sm font-medium text-zinc-600">Senha</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
                     autoComplete={isSignUp ? "new-password" : "current-password"}
                     placeholder="********"
-                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 pr-12 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
+                    className="w-full rounded-2xl border border-zinc-300 bg-white px-5 py-4 pr-12 text-zinc-900 placeholder-zinc-400 shadow-inner outline-none transition focus:border-zinc-400"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-white/60 transition hover:bg-white/10 hover:text-white cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 cursor-pointer"
                     aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   >
                     <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -474,7 +474,7 @@ export default function LoginPage() {
               {isSignUp && (
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">
+                    <label className="text-sm font-medium text-zinc-600">
                       Confirmar senha
                     </label>
                     <div className="relative">
@@ -483,14 +483,14 @@ export default function LoginPage() {
                         name="confirmPassword"
                         autoComplete="new-password"
                         placeholder="********"
-                        className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 pr-12 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
+                        className="w-full rounded-2xl border border-zinc-300 bg-white px-5 py-4 pr-12 text-zinc-900 placeholder-zinc-400 shadow-inner outline-none transition focus:border-zinc-400"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-white/60 transition hover:bg-white/10 hover:text-white cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 cursor-pointer"
                         aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
                       >
                         <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -501,13 +501,13 @@ export default function LoginPage() {
                         </svg>
                       </button>
                     </div>
-                    <p className="text-xs text-white/40">
+                    <p className="text-xs text-zinc-500">
                       A senha deve ter pelo menos 6 caracteres.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">
+                    <label className="text-sm font-medium text-zinc-600">
                       Celular (Brasil)
                     </label>
                     <input
@@ -516,7 +516,7 @@ export default function LoginPage() {
                       autoComplete="tel"
                       inputMode="numeric"
                       placeholder="(51) 9XXXX-XXXX"
-                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
+                      className="w-full rounded-2xl border border-zinc-300 bg-white px-5 py-4 text-zinc-900 placeholder-zinc-400 shadow-inner outline-none transition focus:border-zinc-400"
                       value={formatBRPhone(phoneDigits)}
                       onChange={(e) => {
                         const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 11);
@@ -528,21 +528,21 @@ export default function LoginPage() {
               )}
 
               {success && (
-                <div className="rounded-2xl border border-green-500/25 bg-green-500/10 px-4 py-3">
-                  <p className="text-sm text-green-100">{success}</p>
+                <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3">
+                  <p className="text-sm text-green-800">{success}</p>
                 </div>
               )}
 
               {error && (
-                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3">
-                  <p className="text-sm text-red-200">{error}</p>
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+                  <p className="text-sm text-red-700">{error}</p>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-2xl bg-white/10 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-black/40 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-2xl bg-zinc-900 px-6 py-4 text-base font-semibold text-white shadow-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading
                   ? isSignUp
@@ -553,7 +553,7 @@ export default function LoginPage() {
                     : "Entrar"}
               </button>
 
-              <p className="pt-2 text-center text-sm text-white/50">
+              <p className="pt-2 text-center text-sm text-zinc-500">
                 Ao continuar, você concorda com nossos{" "}
                 <span className="underline underline-offset-4">Termos</span>,{" "}
                 <span className="underline underline-offset-4">Uso Aceitável</span>{" "}

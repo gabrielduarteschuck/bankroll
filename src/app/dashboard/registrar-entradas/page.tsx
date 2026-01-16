@@ -6,6 +6,12 @@ import { useTheme } from "@/contexts/ThemeContext";
 
 const STAKES_PREDEFINIDAS = [0.2, 0.5, 1, 2, 5];
 
+type StakePersonalizada = {
+  id: string;
+  nome: string;
+  percent: number;
+};
+
 // 10 esportes mais comuns (ordem de uso), + opção "Outro"
 const ESPORTES_PREDEFINIDOS = [
   "Futebol",
@@ -28,11 +34,13 @@ export default function RegistrarEntradasPage() {
   const [stakeSelecionada, setStakeSelecionada] = useState<string>("");
   const [stakeCustomizada, setStakeCustomizada] = useState<string>("");
   const [mostrarStake, setMostrarStake] = useState<boolean>(false);
+  const [stakesPersonalizadas, setStakesPersonalizadas] = useState<StakePersonalizada[]>([]);
   const [odd, setOdd] = useState<string>("");
   const [esporte, setEsporte] = useState<string>("");
   const [esporteCustomizado, setEsporteCustomizado] = useState<string>("");
   const [mostrarEsporte, setMostrarEsporte] = useState<boolean>(false);
   const [mercadoTexto, setMercadoTexto] = useState<string>("");
+  const [descricao, setDescricao] = useState<string>("");
   const [sugestoesMercado, setSugestoesMercado] = useState<string[]>([]);
   const [loadingSugestoes, setLoadingSugestoes] = useState<boolean>(false);
   const [resultado, setResultado] = useState<"green" | "red" | "">("");
@@ -55,6 +63,7 @@ export default function RegistrarEntradasPage() {
 
   useEffect(() => {
     loadBanca();
+    loadStakesPersonalizadas();
   }, []);
 
   useEffect(() => {
@@ -112,6 +121,38 @@ export default function RegistrarEntradasPage() {
       setSugestoesMercado(unique);
     } finally {
       setLoadingSugestoes(false);
+    }
+  }
+
+  async function loadStakesPersonalizadas() {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("stakes_personalizadas")
+        .select("id, nome, percent")
+        .eq("user_id", user.id)
+        .order("percent", { ascending: true });
+
+      if (error) {
+        // best-effort: se a migration ainda não foi aplicada, não quebra a tela
+        setStakesPersonalizadas([]);
+        return;
+      }
+
+      setStakesPersonalizadas(
+        (data || []).map((r: any) => ({
+          id: String(r.id),
+          nome: String(r.nome || "stake"),
+          percent: Number(r.percent),
+        }))
+      );
+    } catch {
+      // ignore
     }
   }
 
@@ -205,6 +246,24 @@ export default function RegistrarEntradasPage() {
     }
   }
 
+  function percentStakeFromSelection(): number {
+    if (!stakeSelecionada) return 0;
+
+    if (stakeSelecionada === "custom") {
+      const customValue = parseFloat(stakeCustomizada.replace(",", "."));
+      return !isNaN(customValue) && customValue > 0 ? customValue : 0;
+    }
+
+    if (stakeSelecionada.startsWith("ps:")) {
+      const id = stakeSelecionada.slice(3);
+      const found = stakesPersonalizadas.find((s) => s.id === id);
+      return found ? Number(found.percent) : 0;
+    }
+
+    const parsed = parseFloat(stakeSelecionada);
+    return !isNaN(parsed) && parsed > 0 ? parsed : 0;
+  }
+
   function calculateValues() {
     const base = (stakeBase ?? bancaInicial) ?? 0;
     if (!base || base <= 0) {
@@ -214,16 +273,7 @@ export default function RegistrarEntradasPage() {
     }
 
     // Calcula valor apostado (stake) - usa banca inicial
-    let percentStake = 0;
-
-    if (stakeSelecionada === "custom") {
-      const customValue = parseFloat(stakeCustomizada.replace(",", "."));
-      if (!isNaN(customValue) && customValue > 0) {
-        percentStake = customValue;
-      }
-    } else if (stakeSelecionada) {
-      percentStake = parseFloat(stakeSelecionada);
-    }
+    const percentStake = percentStakeFromSelection();
 
     const valorApostadoCalculado =
       percentStake > 0 ? (base * percentStake) / 100 : 0;
@@ -260,6 +310,11 @@ export default function RegistrarEntradasPage() {
     if (!stakeSelecionada) return "";
     if (stakeSelecionada === "custom") {
       return stakeCustomizada.trim() ? `${stakeCustomizada}%` : "Outra (customizada)";
+    }
+    if (stakeSelecionada.startsWith("ps:")) {
+      const id = stakeSelecionada.slice(3);
+      const found = stakesPersonalizadas.find((s) => s.id === id);
+      return found ? `${found.percent}%` : "Stake personalizada";
     }
     return `${stakeSelecionada}%`;
   }
@@ -303,18 +358,15 @@ export default function RegistrarEntradasPage() {
         return;
       }
 
-      let percentStake = 0;
-
-      if (stakeSelecionada === "custom") {
-        const customValue = parseFloat(stakeCustomizada.replace(",", "."));
-        if (isNaN(customValue) || customValue <= 0) {
-          alert("Por favor, insira um valor válido para a stake customizada");
-          setLoading(false);
-          return;
-        }
-        percentStake = customValue;
-      } else {
-        percentStake = parseFloat(stakeSelecionada);
+      const percentStake = percentStakeFromSelection();
+      if (!percentStake || percentStake <= 0) {
+        alert(
+          stakeSelecionada === "custom"
+            ? "Por favor, insira um valor válido para a stake customizada"
+            : "Por favor, selecione uma stake válida"
+        );
+        setLoading(false);
+        return;
       }
 
       const oddValue = parseFloat(odd.replace(",", "."));
@@ -333,6 +385,7 @@ export default function RegistrarEntradasPage() {
 
       // Mercado é OPCIONAL
       const mercadoFinal = mercadoTexto.trim() ? mercadoTexto.trim() : null;
+      const observacoesFinal = descricao.trim() ? descricao.trim() : null;
 
       // Salva a entrada no banco de dados
       const { error: insertError } = await supabase.from("entradas").insert({
@@ -342,6 +395,7 @@ export default function RegistrarEntradasPage() {
         odd: oddValue,
         esporte: esporteFinal,
         mercado: mercadoFinal,
+        observacoes: observacoesFinal,
         resultado: resultado,
         valor_resultado: valorResultado,
       });
@@ -379,6 +433,18 @@ export default function RegistrarEntradasPage() {
             `3. Execute o arquivo "ADICIONAR-COLUNA-MERCADO.sql"\n\n` +
             `Este script adiciona a coluna 'mercado' à tabela.`
           );
+        } else if (
+          (insertError.message.includes("observacoes") && insertError.message.includes("column")) ||
+          insertError.message.includes("observacoes does not exist")
+        ) {
+          alert(
+            `❌ Coluna 'observacoes' não encontrada na tabela 'entradas'!\n\n` +
+              `📋 Para resolver:\n` +
+              `1. Acesse: https://supabase.com/dashboard\n` +
+              `2. Vá em "SQL Editor"\n` +
+              `3. Execute a migration "0013_add_observacoes_to_entradas.sql" (pasta supabase/migrations)\n\n` +
+              `Isso adiciona a coluna 'observacoes' para salvar descrições.`
+          );
         } else {
           alert(
             `Erro ao salvar entrada: ${insertError.message}\n\n` +
@@ -410,6 +476,7 @@ export default function RegistrarEntradasPage() {
       setEsporte("");
       setEsporteCustomizado("");
       setMercadoTexto("");
+      setDescricao("");
       setSugestoesMercado([]);
       setResultado("");
       setValorApostado(0);
@@ -419,6 +486,7 @@ export default function RegistrarEntradasPage() {
         `✅ Entrada registrada com sucesso!\n\n` +
         `Esporte: ${esporteFinal}\n` +
         (mercadoFinal ? `Mercado: ${mercadoFinal}\n` : "") +
+        (observacoesFinal ? `Descrição: ${observacoesFinal}\n` : "") +
         `Stake: ${percentStake}%\n` +
         `Valor Apostado: R$ ${valorApostado.toLocaleString("pt-BR", {
           minimumFractionDigits: 2,
@@ -555,6 +623,54 @@ export default function RegistrarEntradasPage() {
                       </div>
                     </label>
                   ))}
+
+                  {stakesPersonalizadas.length > 0 && (
+                    <div className={`pt-2 mt-2 border-t ${cardBorder}`}>
+                      <div className={`text-xs font-semibold ${textTertiary} mb-2`}>
+                        Stakes personalizadas
+                      </div>
+                      <div className="space-y-2">
+                        {stakesPersonalizadas.map((s) => {
+                          const base = (stakeBase ?? bancaInicial) ?? 0;
+                          const valor =
+                            base > 0 ? (base * Number(s.percent)) / 100 : 0;
+                          const value = `ps:${s.id}`;
+                          return (
+                            <label
+                              key={s.id}
+                              className={`flex items-center p-3 rounded-lg border ${cardBorder} cursor-pointer ${hoverBg} transition-colors`}
+                            >
+                              <input
+                                type="radio"
+                                name="stake"
+                                value={value}
+                                checked={stakeSelecionada === value}
+                                onChange={(e) => {
+                                  handleStakeChange(e.target.value);
+                                  setMostrarStake(false);
+                                }}
+                                className="mr-3"
+                              />
+                              <div className="flex-1">
+                                <div className={`text-sm font-medium ${textPrimary}`}>
+                                  {s.percent}%
+                                </div>
+                                {base > 0 && (
+                                  <div className={`text-xs ${textTertiary}`}>
+                                    R${" "}
+                                    {valor.toLocaleString("pt-BR", {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   <label className={`flex items-center p-3 rounded-lg border ${cardBorder} cursor-pointer ${hoverBg} transition-colors`}>
                     <input
@@ -796,6 +912,23 @@ export default function RegistrarEntradasPage() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Descrição (opcional) */}
+            <div>
+              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+                Descrição <span className={`${textTertiary}`}>(opcional)</span>
+              </label>
+              <textarea
+                placeholder="Ex: Motivo da entrada, leitura do jogo, plano de gestão..."
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                rows={3}
+                className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent`}
+              />
+              <p className={`text-xs ${textTertiary} mt-2`}>
+                Use para registrar a lógica da aposta e facilitar revisões depois.
+              </p>
             </div>
 
             {/* Resultado (Green/Red) */}

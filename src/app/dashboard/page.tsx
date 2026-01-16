@@ -21,6 +21,7 @@ export default function DashboardHome() {
   const [bancaInicial, setBancaInicial] = useState(0);
   const [bancaAtual, setBancaAtual] = useState(0);
   const [lucroBanca, setLucroBanca] = useState(0);
+  const [lucroLiquido, setLucroLiquido] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("7dias");
   const [dataInicio, setDataInicio] = useState<string>("");
@@ -207,6 +208,7 @@ export default function DashboardHome() {
           }
           return acc;
         }, 0);
+        setLucroLiquido(somaResultados);
 
         if (bancaData) {
           const novaBanca = bancaInicialNum + somaResultados;
@@ -257,6 +259,9 @@ export default function DashboardHome() {
   const inputBg = theme === "dark" ? "bg-zinc-800" : "bg-white";
   const inputBorder = theme === "dark" ? "border-zinc-700" : "border-zinc-300";
   const inputText = theme === "dark" ? "text-white" : "text-zinc-900";
+
+  const totalDecididas = greens + reds;
+  const assertividade = totalDecididas > 0 ? (greens / totalDecididas) * 100 : 0;
 
   return (
     <div className="space-y-8">
@@ -316,6 +321,59 @@ export default function DashboardHome() {
 
       {/* Cards (ordem e compactação pedidas) */}
       <div className="space-y-6">
+        {/* Assertividade / Lucro Líquido */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div
+            className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
+              theme === "dark"
+                ? "hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20"
+                : "hover:border-zinc-300 hover:shadow-md"
+            }`}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
+                Assertividade
+              </div>
+            </div>
+            <div className={`text-4xl font-bold mb-2 ${textPrimary}`}>
+              {assertividade.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+            </div>
+            <div className={`text-xs ${textTertiary}`}>
+              {totalDecididas > 0
+                ? `${greens} greens em ${totalDecididas} entradas decididas`
+                : "Sem entradas decididas no período"}
+            </div>
+          </div>
+
+          <div
+            className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
+              lucroLiquido >= 0
+                ? theme === "dark"
+                  ? "hover:border-green-500/30 hover:shadow-lg hover:shadow-green-500/10"
+                  : "hover:border-green-300 hover:shadow-md"
+                : theme === "dark"
+                ? "hover:border-red-500/30 hover:shadow-lg hover:shadow-red-500/10"
+                : "hover:border-red-300 hover:shadow-md"
+            }`}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className={`text-xs font-medium uppercase tracking-wider ${textSecondary}`}>
+                Lucro Líquido
+              </div>
+              <div className={`h-2 w-2 rounded-full ${lucroLiquido >= 0 ? "bg-green-500" : "bg-red-500"}`} />
+            </div>
+            <div className={`text-4xl font-bold mb-2 ${lucroLiquido >= 0 ? "text-green-500" : "text-red-500"}`}>
+              {lucroLiquido >= 0 ? "+" : ""}
+              R${" "}
+              {lucroLiquido.toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
+            <div className={`text-xs ${textTertiary}`}>Soma dos resultados no período</div>
+          </div>
+        </div>
+
         {/* Total de Entradas */}
         <div className="grid grid-cols-1">
           <div className={`group relative overflow-hidden rounded-xl ${cardBg} border ${cardBorder} p-6 transition-all ${
