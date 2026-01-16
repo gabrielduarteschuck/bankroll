@@ -156,8 +156,7 @@ export default function LoginPage() {
       }
 
       // Cria a conta no Supabase
-      const redirectTo =
-        typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined;
+      const redirectTo = `${window.location.origin}/dashboard`;
 
       // DEBUG (temporário): variáveis de ambiente públicas
       console.log("SUPABASE URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
