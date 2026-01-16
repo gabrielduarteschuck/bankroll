@@ -357,11 +357,12 @@ export default function LoginPage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl sm:p-10">
             {/* header */}
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
-                <img src="/logo-mark.svg" alt="ProStake" className="h-10 w-10" />
-              </div>
               <div className="flex justify-center">
-                <img src="/logo.svg" alt="ProStake" className="h-12 w-auto sm:h-14" />
+                <img
+                  src="/imagens/logo%20prostake%20fundo%20transparemte.png"
+                  alt="ProStake"
+                  className="h-16 w-auto sm:h-20"
+                />
               </div>
 
               <div className="space-y-2">

@@ -94,11 +94,12 @@ export default function DashboardLayout({
           )}
         </button>
         <div className="flex items-center gap-2">
-          <img
-            src="/logo-mark.svg"
-            alt="ProStake"
-            className="h-7 w-7"
-          />
+          <div
+            aria-label="ProStake"
+            className="h-7 w-7 rounded-lg bg-zinc-900 text-white flex items-center justify-center font-black text-sm border border-zinc-700/50"
+          >
+            S
+          </div>
           <div className={`text-sm font-semibold ${
             theme === "dark" ? "text-white" : "text-zinc-900"
           }`}>
@@ -128,11 +129,12 @@ export default function DashboardLayout({
               : "border-zinc-200 bg-white"
           }`}>
             <div className="flex items-center gap-2">
-              <img
-                src="/logo-mark.svg"
-                alt="ProStake"
-                className="h-7 w-7"
-              />
+              <div
+                aria-label="ProStake"
+                className="h-7 w-7 rounded-lg bg-zinc-900 text-white flex items-center justify-center font-black text-sm border border-zinc-700/50"
+              >
+                S
+              </div>
               <div className={`text-sm font-semibold ${
                 theme === "dark" ? "text-white" : "text-zinc-900"
               }`}>
@@ -192,11 +194,12 @@ export default function DashboardLayout({
               : "border-zinc-200 bg-white"
           }`}>
             <div className="flex items-center gap-2">
-              <img
-                src="/logo-mark.svg"
-                alt="ProStake"
-                className="h-7 w-7"
-              />
+              <div
+                aria-label="ProStake"
+                className="h-7 w-7 rounded-lg bg-zinc-900 text-white flex items-center justify-center font-black text-sm border border-zinc-700/50"
+              >
+                S
+              </div>
               <div className={`text-sm font-semibold ${
                 theme === "dark" ? "text-white" : "text-zinc-900"
               }`}>
