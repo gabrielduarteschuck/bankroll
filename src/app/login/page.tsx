@@ -357,11 +357,11 @@ export default function LoginPage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl sm:p-10">
             {/* header */}
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="flex justify-center">
+              <div className="flex justify-center -mt-2">
                 <img
                   src="/imagens/logo%20prostake%20fundo%20transparemte.png"
                   alt="ProStake"
-                  className="h-16 w-auto sm:h-20"
+                  className="h-24 w-auto max-w-[80%] sm:h-32 sm:max-w-[70%]"
                 />
               </div>
 
