@@ -4,11 +4,31 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+type CountryOption = {
+  code: "BR" | "US" | "PT" | "AR" | "MX" | "ES";
+  name: string;
+  dial: string; // ex: "+55"
+  flag: string; // emoji
+  minDigits: number;
+  maxDigits: number;
+};
+
+const COUNTRY_OPTIONS: CountryOption[] = [
+  { code: "BR", name: "Brasil", dial: "+55", flag: "🇧🇷", minDigits: 10, maxDigits: 11 },
+  { code: "US", name: "Estados Unidos", dial: "+1", flag: "🇺🇸", minDigits: 10, maxDigits: 10 },
+  { code: "PT", name: "Portugal", dial: "+351", flag: "🇵🇹", minDigits: 9, maxDigits: 9 },
+  { code: "AR", name: "Argentina", dial: "+54", flag: "🇦🇷", minDigits: 10, maxDigits: 11 },
+  { code: "MX", name: "México", dial: "+52", flag: "🇲🇽", minDigits: 10, maxDigits: 10 },
+  { code: "ES", name: "Espanha", dial: "+34", flag: "🇪🇸", minDigits: 9, maxDigits: 9 },
+];
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [telefone, setTelefone] = useState("");
+  // Telefone (opcional) com UX de país/DDD e normalização E.164
+  const [countryCode, setCountryCode] = useState<CountryOption["code"]>("BR");
+  const [phoneNational, setPhoneNational] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,6 +36,15 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
+
+  const selectedCountry =
+    COUNTRY_OPTIONS.find((c) => c.code === countryCode) || COUNTRY_OPTIONS[0];
+
+  function phoneE164OrNull(): string | null {
+    const digits = phoneNational.replace(/\D/g, "");
+    if (!digits) return null;
+    return `${selectedCountry.dial}${digits}`;
+  }
 
   async function handleLogin(e?: React.FormEvent) {
     e?.preventDefault();
@@ -100,20 +129,22 @@ export default function LoginPage() {
         return;
       }
 
-      if (!telefone || telefone.trim() === "") {
-        clearTimeout(timeoutId);
-        setError("O número de celular é obrigatório");
-        setLoading(false);
-        return;
-      }
-
-      // Validação básica de telefone (formato simples)
-      const telefoneLimpo = telefone.replace(/\D/g, ""); // Remove tudo que não é dígito
-      if (telefoneLimpo.length < 10) {
-        clearTimeout(timeoutId);
-        setError("Número de celular inválido");
-        setLoading(false);
-        return;
+      // Telefone é opcional — se informado, valida e normaliza para E.164
+      const phoneDigits = phoneNational.replace(/\D/g, "");
+      const phoneE164 = phoneE164OrNull();
+      if (phoneDigits) {
+        if (phoneDigits.length < selectedCountry.minDigits) {
+          clearTimeout(timeoutId);
+          setError("Número de celular inválido (curto demais).");
+          setLoading(false);
+          return;
+        }
+        if (phoneDigits.length > selectedCountry.maxDigits) {
+          clearTimeout(timeoutId);
+          setError("Número de celular inválido (longo demais).");
+          setLoading(false);
+          return;
+        }
       }
 
       // Verifica se o Supabase está configurado
@@ -125,7 +156,13 @@ export default function LoginPage() {
       }
 
       // Cria a conta no Supabase
-      console.log("🚀 Iniciando signup...", { email, telefoneLimpo });
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined;
+      console.log("🚀 Iniciando signup...", {
+        email,
+        phone: phoneE164,
+        redirectTo,
+      });
       const startTime = Date.now();
       
       let signUpResult;
@@ -137,9 +174,10 @@ export default function LoginPage() {
             password,
             options: {
               data: {
-                telefone: telefoneLimpo, // Salva telefone limpo nos metadados
+                // Importante: telefone NÃO vai como campo principal; apenas metadata.
+                ...(phoneE164 ? { phone: phoneE164 } : {}),
               },
-              emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : undefined,
+              emailRedirectTo: redirectTo,
             },
           }),
           // Timeout de 8 segundos para a chamada do Supabase
@@ -149,7 +187,7 @@ export default function LoginPage() {
         ]) as any;
         
         const duration = Date.now() - startTime;
-        console.log(`✅ Signup completado em ${duration}ms`, signUpResult);
+        console.log(`✅ Signup completado em ${duration}ms`);
       } catch (networkError: any) {
         clearTimeout(timeoutId);
         const duration = Date.now() - startTime;
@@ -172,23 +210,16 @@ export default function LoginPage() {
 
       const { data, error: signUpError } = signUpResult;
 
-      // Log para debug
-      console.log("📊 Signup result:", { 
-        hasUser: !!data?.user, 
-        hasError: !!signUpError,
-        error: signUpError,
-        session: !!data?.session,
-        user: data?.user ? { id: data.user.id, email: data.user.email } : null,
-        fullData: data,
-        fullError: signUpError
-      });
+      // Logs explícitos para debug em produção (browser console)
+      console.log("📦 signUp data:", data);
+      console.log("🧯 signUp error:", signUpError);
 
       if (signUpError) {
         clearTimeout(timeoutId);
         console.error("Erro no signup:", signUpError);
         
         // Mensagens de erro mais amigáveis
-        let errorMessage = signUpError.message;
+        let errorMessage = signUpError.message || "Erro ao criar conta.";
         if (signUpError.message?.toLowerCase().includes("timeout")) {
           errorMessage = "O Supabase demorou para responder. Tente novamente em alguns instantes.";
         } else if (signUpError.message?.includes("fetch") || signUpError.message?.includes("Failed")) {
@@ -197,6 +228,9 @@ export default function LoginPage() {
           errorMessage = "Erro no banco de dados. Execute a migration 0005_fix_signup_trigger.sql no Supabase.";
         } else if (signUpError.message?.includes("User already registered")) {
           errorMessage = "Este email já está cadastrado. Tente fazer login.";
+        } else if (signUpError.message?.toLowerCase().includes("redirect")) {
+          errorMessage =
+            "URL de redirecionamento inválida. Verifique as Redirect URLs no Supabase (Auth > URL Configuration).";
         }
         
         setError(errorMessage);
@@ -243,7 +277,7 @@ export default function LoginPage() {
         setIsSignUp(false);
         setPassword("");
         setConfirmPassword("");
-        setTelefone("");
+        setPhoneNational("");
         setError(null);
         setLoading(false);
         // Email já está preenchido, usuário só precisa digitar a senha
@@ -278,7 +312,7 @@ export default function LoginPage() {
         setIsSignUp(false);
         setPassword("");
         setConfirmPassword("");
-        setTelefone("");
+      setPhoneNational("");
         setError(null);
         setLoading(false);
         // Email já está preenchido, usuário só precisa digitar a senha
@@ -295,7 +329,7 @@ export default function LoginPage() {
       setIsSignUp(false);
       setPassword("");
       setConfirmPassword("");
-      setTelefone("");
+      setPhoneNational("");
       setError(null);
       setLoading(false);
     } catch (err: any) {
@@ -350,7 +384,7 @@ export default function LoginPage() {
                           setIsSignUp(false);
                           setError(null);
                           setSuccess(null);
-                          setTelefone("");
+                          setPhoneNational("");
                           setConfirmPassword("");
                         }}
                         className="cursor-pointer font-semibold text-white underline underline-offset-4 hover:opacity-90"
@@ -456,21 +490,44 @@ export default function LoginPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">Celular</label>
-                    <input
-                      type="tel"
-                      name="telefone"
-                      autoComplete="tel"
-                      placeholder="(11) 98765-4321"
-                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
-                      value={telefone}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/[^\d()\s-]/g, "");
-                        setTelefone(value);
-                      }}
-                    />
+                    <label className="text-sm font-medium text-white/70">
+                      Celular (opcional)
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={countryCode}
+                        onChange={(e) =>
+                          setCountryCode(e.target.value as CountryOption["code"])
+                        }
+                        className="w-[180px] rounded-2xl border border-white/10 bg-black/30 px-4 py-4 text-white shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40 cursor-pointer"
+                        aria-label="País / DDI"
+                      >
+                        {COUNTRY_OPTIONS.map((c) => (
+                          <option key={c.code} value={c.code}>
+                            {c.flag} {c.name} ({c.dial})
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="tel"
+                        name="phone"
+                        autoComplete="tel"
+                        inputMode="tel"
+                        placeholder="DDD + número"
+                        className="flex-1 rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
+                        value={phoneNational}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^\d()\s-]/g, "");
+                          setPhoneNational(value);
+                        }}
+                      />
+                    </div>
                     <p className="text-xs text-white/40">
-                      Digite apenas números (ex: 11987654321).
+                      Será salvo como{" "}
+                      <span className="font-medium text-white/70">
+                        {phoneE164OrNull() || `${selectedCountry.dial}...`}
+                      </span>
+                      .
                     </p>
                   </div>
                 </div>
