@@ -4,32 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-type CountryOption = {
-  code: "BR" | "US" | "PT" | "AR" | "MX" | "ES";
-  name: string;
-  dial: string; // ex: "+55"
-  flag: string; // emoji
-  minDigits: number;
-  maxDigits: number;
-};
-
-const COUNTRY_OPTIONS: CountryOption[] = [
-  { code: "BR", name: "Brasil", dial: "+55", flag: "🇧🇷", minDigits: 10, maxDigits: 11 },
-  { code: "US", name: "Estados Unidos", dial: "+1", flag: "🇺🇸", minDigits: 10, maxDigits: 10 },
-  { code: "PT", name: "Portugal", dial: "+351", flag: "🇵🇹", minDigits: 9, maxDigits: 9 },
-  { code: "AR", name: "Argentina", dial: "+54", flag: "🇦🇷", minDigits: 10, maxDigits: 11 },
-  { code: "MX", name: "México", dial: "+52", flag: "🇲🇽", minDigits: 10, maxDigits: 10 },
-  { code: "ES", name: "Espanha", dial: "+34", flag: "🇪🇸", minDigits: 9, maxDigits: 9 },
-];
-
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  // Telefone (opcional) com UX de país/DDD e normalização E.164
-  const [countryCode, setCountryCode] = useState<CountryOption["code"]>("BR");
-  const [phoneNational, setPhoneNational] = useState("");
+  // Celular (Brasil): salva internamente só números (11 dígitos) e persiste em E.164 (+55XXXXXXXXXXX)
+  const [phoneDigits, setPhoneDigits] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,13 +19,23 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
-  const selectedCountry =
-    COUNTRY_OPTIONS.find((c) => c.code === countryCode) || COUNTRY_OPTIONS[0];
+  function formatBRPhone(digits: string): string {
+    const d = digits.replace(/\D/g, "").slice(0, 11); // trava em 11
+    if (!d) return "";
+    if (d.length <= 2) return `(${d}`;
+    const ddd = d.slice(0, 2);
+    const rest = d.slice(2);
+    // padrão: (DD) 9XXXX-XXXX
+    if (rest.length <= 5) return `(${ddd}) ${rest}`;
+    const part1 = rest.slice(0, 5);
+    const part2 = rest.slice(5, 9);
+    return `(${ddd}) ${part1}${part2 ? `-${part2}` : ""}`;
+  }
 
   function phoneE164OrNull(): string | null {
-    const digits = phoneNational.replace(/\D/g, "");
-    if (!digits) return null;
-    return `${selectedCountry.dial}${digits}`;
+    const d = phoneDigits.replace(/\D/g, "").slice(0, 11);
+    if (d.length !== 11) return null;
+    return `+55${d}`;
   }
 
   async function handleLogin(e?: React.FormEvent) {
@@ -137,24 +128,18 @@ export default function LoginPage() {
         return;
       }
 
-      // Telefone é obrigatório — valida e normaliza para E.164 (sem verificação)
-      const phoneDigits = phoneNational.replace(/\D/g, "");
+      // Celular é obrigatório (Brasil): DDD + 9 dígitos (11 no total)
+      const digits = phoneDigits.replace(/\D/g, "").slice(0, 11);
       const phoneE164 = phoneE164OrNull();
-      if (!phoneDigits) {
+      if (!digits) {
         clearTimeout(timeoutId);
         setError("Informe seu número de celular.");
         setLoading(false);
         return;
       }
-      if (phoneDigits.length < selectedCountry.minDigits) {
+      if (digits.length !== 11) {
         clearTimeout(timeoutId);
-        setError("Número de celular inválido (curto demais).");
-        setLoading(false);
-        return;
-      }
-      if (phoneDigits.length > selectedCountry.maxDigits) {
-        clearTimeout(timeoutId);
-        setError("Número de celular inválido (longo demais).");
+        setError("Número inválido. Use DDD + 9 dígitos (ex: 51 9XXXX-XXXX)");
         setLoading(false);
         return;
       }
@@ -285,7 +270,7 @@ export default function LoginPage() {
         setFullName("");
         setPassword("");
         setConfirmPassword("");
-        setPhoneNational("");
+        setPhoneDigits("");
         setError(null);
         setLoading(false);
         // Email já está preenchido, usuário só precisa digitar a senha
@@ -321,7 +306,7 @@ export default function LoginPage() {
       setFullName("");
         setPassword("");
         setConfirmPassword("");
-      setPhoneNational("");
+      setPhoneDigits("");
         setError(null);
         setLoading(false);
         // Email já está preenchido, usuário só precisa digitar a senha
@@ -339,7 +324,7 @@ export default function LoginPage() {
       setFullName("");
       setPassword("");
       setConfirmPassword("");
-      setPhoneNational("");
+      setPhoneDigits("");
       setError(null);
       setLoading(false);
     } catch (err: any) {
@@ -373,11 +358,11 @@ export default function LoginPage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl sm:p-10">
             {/* header */}
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="flex justify-center -mt-2">
+              <div className="relative -mt-2 w-full max-w-2xl h-28 sm:h-44">
                 <img
                   src="/imagens/logo%20prostake%20fundo%20transparemte.png"
                   alt="ProStake"
-                  className="h-24 w-auto max-w-[80%] sm:h-32 sm:max-w-[70%]"
+                  className="absolute inset-0 h-full w-full object-contain scale-[1.55] sm:scale-[1.65]"
                 />
               </div>
 
@@ -396,7 +381,7 @@ export default function LoginPage() {
                           setError(null);
                           setSuccess(null);
                           setFullName("");
-                          setPhoneNational("");
+                          setPhoneDigits("");
                           setConfirmPassword("");
                         }}
                         className="cursor-pointer font-semibold text-white underline underline-offset-4 hover:opacity-90"
@@ -428,6 +413,21 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="mt-8 space-y-6">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70">Nome</label>
+                  <input
+                    type="text"
+                    name="name"
+                    autoComplete="name"
+                    placeholder="Seu nome"
+                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-white/70">Email</label>
                 <div className="relative">
@@ -474,20 +474,9 @@ export default function LoginPage() {
               {isSignUp && (
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">Nome</label>
-                    <input
-                      type="text"
-                      name="name"
-                      autoComplete="name"
-                      placeholder="Seu nome"
-                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">Confirmar senha</label>
+                    <label className="text-sm font-medium text-white/70">
+                      Confirmar senha
+                    </label>
                     <div className="relative">
                       <input
                         type={showConfirmPassword ? "text" : "password"}
@@ -512,44 +501,35 @@ export default function LoginPage() {
                         </svg>
                       </button>
                     </div>
-                    <p className="text-xs text-white/40">A senha deve ter pelo menos 6 caracteres.</p>
+                    <p className="text-xs text-white/40">
+                      A senha deve ter pelo menos 6 caracteres.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/70">Celular</label>
-                    <div className="flex gap-2">
-                      <select
-                        value={countryCode}
-                        onChange={(e) =>
-                          setCountryCode(e.target.value as CountryOption["code"])
-                        }
-                        className="w-[180px] rounded-2xl border border-white/10 bg-black/30 px-4 py-4 text-white shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40 cursor-pointer"
-                        aria-label="País / DDI"
-                      >
-                        {COUNTRY_OPTIONS.map((c) => (
-                          <option key={c.code} value={c.code}>
-                            {c.flag} {c.name} ({c.dial})
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="tel"
-                        name="phone"
-                        autoComplete="tel"
-                        inputMode="tel"
-                        placeholder="DDD + número"
-                        className="flex-1 rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
-                        value={phoneNational}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^\d()\s-]/g, "");
-                          setPhoneNational(value);
-                        }}
-                      />
-                    </div>
+                    <label className="text-sm font-medium text-white/70">
+                      Celular (Brasil)
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      autoComplete="tel"
+                      inputMode="numeric"
+                      placeholder="(51) 9XXXX-XXXX"
+                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-white placeholder-white/30 shadow-inner outline-none transition focus:border-white/20 focus:bg-black/40"
+                      value={formatBRPhone(phoneDigits)}
+                      onChange={(e) => {
+                        const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 11);
+                        setPhoneDigits(digitsOnly); // trava em 11 e aceita só números
+                      }}
+                    />
+                    <p className="text-xs text-white/40">
+                      Número inválido. Use DDD + 9 dígitos (ex: 51 9XXXX-XXXX)
+                    </p>
                     <p className="text-xs text-white/40">
                       Será salvo como{" "}
                       <span className="font-medium text-white/70">
-                        {phoneE164OrNull() || `${selectedCountry.dial}...`}
+                        {phoneE164OrNull() || "+55XXXXXXXXXXX"}
                       </span>
                       .
                     </p>

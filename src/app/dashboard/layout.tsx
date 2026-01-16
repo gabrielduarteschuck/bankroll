@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import UserMenu from "@/components/UserMenu";
 import ThemeToggle from "@/components/ThemeToggle";
 import FeedbackWidget from "@/components/FeedbackWidget";
@@ -44,30 +43,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { theme } = useTheme();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const router = useRouter();
   const pathname = usePathname();
-  const ADMIN_EMAIL = "duarte.schuck@icloud.com";
-
-  useEffect(() => {
-    // Busca o email do usuário logado
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserEmail(user?.email?.toLowerCase() || null);
-    });
-  }, []);
 
   useEffect(() => {
     // Fecha o menu mobile quando a rota muda
     setMobileMenuOpen(false);
   }, [pathname]);
-
-  const isAdmin = userEmail === ADMIN_EMAIL.toLowerCase();
-
-  function handleOpenAdmin() {
-    router.push("/admin");
-    setMobileMenuOpen(false);
-  }
 
   return (
     <div className={`min-h-screen ${
@@ -160,21 +142,6 @@ export default function DashboardLayout({
             <NavItem href="/dashboard/ajustes" label="Ajustes" />
           </nav>
 
-          {isAdmin && (
-            <div className="mt-4">
-              <button
-                onClick={handleOpenAdmin}
-                className={`w-full rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                  theme === "dark"
-                    ? "bg-blue-600 text-white hover:bg-blue-700"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                🔐 Abrir Painel de Admin
-              </button>
-            </div>
-          )}
-
           <div className="mt-4 mb-4">
             <ThemeToggle />
           </div>
@@ -224,21 +191,6 @@ export default function DashboardLayout({
             <NavItem href="/dashboard/como-funciona" label="Como funciona" />
             <NavItem href="/dashboard/ajustes" label="Ajustes" />
           </nav>
-
-          {isAdmin && (
-            <div className="mt-4">
-              <button
-                onClick={handleOpenAdmin}
-                className={`w-full rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                  theme === "dark"
-                    ? "bg-blue-600 text-white hover:bg-blue-700"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                🔐 Abrir Painel de Admin
-              </button>
-            </div>
-          )}
 
           <div className="mt-4 mb-4">
             <ThemeToggle />
