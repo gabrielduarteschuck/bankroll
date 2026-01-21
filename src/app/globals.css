@@ -25,6 +25,35 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* ==========================================================================
+   Fix: Chrome/Safari autofill força fundo claro no modo escuro
+   (ex.: após escolher sugestão/autocomplete no input)
+   ========================================================================== */
+.dark input:-webkit-autofill,
+.dark textarea:-webkit-autofill,
+.dark select:-webkit-autofill {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0 1000px #27272a inset; /* zinc-800 */
+  box-shadow: 0 0 0 1000px #27272a inset; /* zinc-800 */
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+.dark input:-webkit-autofill:hover,
+.dark textarea:-webkit-autofill:hover,
+.dark select:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark textarea:-webkit-autofill:focus,
+.dark select:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active,
+.dark textarea:-webkit-autofill:active,
+.dark select:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0 1000px #27272a inset; /* zinc-800 */
+  box-shadow: 0 0 0 1000px #27272a inset; /* zinc-800 */
+}
+
 @keyframes fadeInDown {
   from {
     opacity: 0;

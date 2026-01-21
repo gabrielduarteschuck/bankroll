@@ -18,7 +18,7 @@ const TIPS: Tip[] = [
   },
   {
     title: "Registre tudo",
-    body: "Anote mercado, odd, stake e resultado em cada entrada — dados completos facilitam identificar padrões, corrigir erros e evoluir sua estratégia com clareza.",
+    body: "Anote mercado, odd, unidades e resultado em cada entrada — dados completos facilitam identificar padrões, corrigir erros e evoluir sua estratégia com clareza.",
   },
   {
     title: "Evite decisões por impulso",
@@ -26,7 +26,7 @@ const TIPS: Tip[] = [
   },
   {
     title: "Foque em consistência, não em recuperar",
-    body: "Após uma sequência ruim, não aumente stake para ‘buscar o prejuízo’; mantenha sua estratégia e ajuste somente com base em análise, não em emoção.",
+    body: "Após uma sequência ruim, não aumente unidades para ‘buscar o prejuízo’; mantenha sua estratégia e ajuste somente com base em análise, não em emoção.",
   },
   {
     title: "Revise semanalmente",

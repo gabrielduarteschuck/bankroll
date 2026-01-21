@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -27,6 +30,7 @@ const ESPORTES_PREDEFINIDOS = [
 ] as const;
 
 export default function RegistrarEntradasPage() {
+  const router = useRouter();
   const { theme } = useTheme();
   const [bancaInicial, setBancaInicial] = useState<number | null>(null);
   const [bancaAtual, setBancaAtual] = useState<number | null>(null);
@@ -40,10 +44,18 @@ export default function RegistrarEntradasPage() {
   const [esporteCustomizado, setEsporteCustomizado] = useState<string>("");
   const [mostrarEsporte, setMostrarEsporte] = useState<boolean>(false);
   const [mercadoTexto, setMercadoTexto] = useState<string>("");
+  const [modalMercadoOpen, setModalMercadoOpen] = useState(false);
+  const [novoMercadoNome, setNovoMercadoNome] = useState<string>("");
+  const [savingMercado, setSavingMercado] = useState(false);
   const [descricao, setDescricao] = useState<string>("");
   const [sugestoesMercado, setSugestoesMercado] = useState<string[]>([]);
   const [loadingSugestoes, setLoadingSugestoes] = useState<boolean>(false);
-  const [resultado, setResultado] = useState<"green" | "red" | "">("");
+  const lastSavedMercadoRef = useRef<{ esporte: string; mercado: string } | null>(
+    null
+  );
+  const [resultado, setResultado] = useState<"pendente" | "green" | "red">(
+    "pendente"
+  );
   const [valorApostado, setValorApostado] = useState<number>(0);
   const [valorResultado, setValorResultado] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -153,6 +165,91 @@ export default function RegistrarEntradasPage() {
       );
     } catch {
       // ignore
+    }
+  }
+
+  async function saveMercadoSugestaoIfNeeded() {
+    const esporteFinal = esporteFinalValue();
+    const mercadoFinal = mercadoTexto.trim();
+    if (!esporteFinal || !mercadoFinal) return;
+
+    // evita re-salvar o mesmo par esporte+mercado em sequência
+    if (
+      lastSavedMercadoRef.current?.esporte === esporteFinal &&
+      lastSavedMercadoRef.current?.mercado === mercadoFinal
+    ) {
+      return;
+    }
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const mercado_norm = mercadoFinal.toLowerCase();
+      const { error } = await supabase
+        .from("mercados_sugeridos")
+        .upsert(
+          { user_id: user.id, esporte: esporteFinal, mercado: mercadoFinal, mercado_norm },
+          { onConflict: "user_id,esporte,mercado_norm", ignoreDuplicates: true }
+        );
+
+      if (error) {
+        // se a migration ainda não foi aplicada, não quebra a tela
+        return;
+      }
+
+      lastSavedMercadoRef.current = { esporte: esporteFinal, mercado: mercadoFinal };
+      await loadSugestoesMercado();
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleAddMercado() {
+    const esporteFinal = esporteFinalValue();
+    if (!esporteFinal) {
+      alert("Selecione um esporte antes de adicionar um mercado.");
+      return;
+    }
+
+    const mercado = novoMercadoNome.trim();
+    if (!mercado) return;
+
+    setSavingMercado(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        alert("Usuário não autenticado");
+        return;
+      }
+
+      const mercado_norm = mercado.toLowerCase();
+      const { error } = await supabase
+        .from("mercados_sugeridos")
+        .upsert(
+          { user_id: user.id, esporte: esporteFinal, mercado, mercado_norm },
+          { onConflict: "user_id,esporte,mercado_norm", ignoreDuplicates: true }
+        );
+
+      if (error) {
+        // Se a migration ainda não foi aplicada, não quebra — apenas não salva.
+        console.warn("Falha ao salvar mercado:", error);
+        alert("Não foi possível salvar o mercado. Tente novamente.");
+        return;
+      }
+
+      // Atualiza sugestões e seleciona automaticamente
+      await loadSugestoesMercado();
+      setMercadoTexto(mercado);
+      lastSavedMercadoRef.current = { esporte: esporteFinal, mercado };
+      setModalMercadoOpen(false);
+      setNovoMercadoNome("");
+    } finally {
+      setSavingMercado(false);
     }
   }
 
@@ -279,8 +376,14 @@ export default function RegistrarEntradasPage() {
       percentStake > 0 ? (base * percentStake) / 100 : 0;
     setValorApostado(valorApostadoCalculado);
 
+    // Pendente: não calcula lucro/prejuízo
+    if (resultado === "pendente") {
+      setValorResultado(0);
+      return;
+    }
+
     // Calcula resultado se tiver odd e resultado selecionado
-    if (odd && resultado && valorApostadoCalculado > 0) {
+    if (odd && valorApostadoCalculado > 0) {
       const oddValue = parseFloat(odd.replace(",", "."));
       if (!isNaN(oddValue) && oddValue > 0) {
         if (resultado === "green") {
@@ -309,14 +412,16 @@ export default function RegistrarEntradasPage() {
   function stakeLabel() {
     if (!stakeSelecionada) return "";
     if (stakeSelecionada === "custom") {
-      return stakeCustomizada.trim() ? `${stakeCustomizada}%` : "Outra (customizada)";
+      return stakeCustomizada.trim()
+        ? `${stakeCustomizada} un`
+        : "Outra unidade (customizada)";
     }
     if (stakeSelecionada.startsWith("ps:")) {
       const id = stakeSelecionada.slice(3);
       const found = stakesPersonalizadas.find((s) => s.id === id);
-      return found ? `${found.percent}%` : "Stake personalizada";
+      return found ? `${found.percent} un` : "Unidade personalizada";
     }
-    return `${stakeSelecionada}%`;
+    return `${stakeSelecionada} un`;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -341,7 +446,7 @@ export default function RegistrarEntradasPage() {
       }
 
       if (!stakeSelecionada) {
-        alert("Por favor, selecione uma stake");
+        alert("Por favor, selecione uma unidade");
         setLoading(false);
         return;
       }
@@ -352,18 +457,14 @@ export default function RegistrarEntradasPage() {
         return;
       }
 
-      if (!resultado) {
-        alert("Por favor, selecione se foi Green ou Red");
-        setLoading(false);
-        return;
-      }
+      // resultado sempre existe (padrão: pendente)
 
       const percentStake = percentStakeFromSelection();
       if (!percentStake || percentStake <= 0) {
         alert(
           stakeSelecionada === "custom"
-            ? "Por favor, insira um valor válido para a stake customizada"
-            : "Por favor, selecione uma stake válida"
+            ? "Por favor, insira um valor válido para a unidade customizada"
+            : "Por favor, selecione uma unidade válida"
         );
         setLoading(false);
         return;
@@ -386,9 +487,12 @@ export default function RegistrarEntradasPage() {
       // Mercado é OPCIONAL
       const mercadoFinal = mercadoTexto.trim() ? mercadoTexto.trim() : null;
       const observacoesFinal = descricao.trim() ? descricao.trim() : null;
+      const valorResultadoFinal = resultado === "pendente" ? null : valorResultado;
 
-      // Salva a entrada no banco de dados
-      const { error: insertError } = await supabase.from("entradas").insert({
+      // Salva a entrada no banco de dados (retorna a linha inserida para garantir persistência do mercado)
+      const { data: insertedRow, error: insertError } = await supabase
+        .from("entradas")
+        .insert({
         user_id: user.id,
         stake_percent: percentStake,
         valor_stake: valorApostado,
@@ -396,9 +500,11 @@ export default function RegistrarEntradasPage() {
         esporte: esporteFinal,
         mercado: mercadoFinal,
         observacoes: observacoesFinal,
-        resultado: resultado,
-        valor_resultado: valorResultado,
-      });
+          resultado: resultado,
+          valor_resultado: valorResultadoFinal,
+        })
+        .select("id, mercado")
+        .single();
 
       if (insertError) {
         console.error("Erro ao salvar entrada:", insertError);
@@ -458,12 +564,15 @@ export default function RegistrarEntradasPage() {
       // Salva sugestão de mercado por esporte (best-effort)
       if (mercadoFinal) {
         try {
-          await supabase
+          const { error: sugestaoError } = await supabase
             .from("mercados_sugeridos")
             .upsert(
               { user_id: user.id, esporte: esporteFinal, mercado: mercadoFinal },
               { onConflict: "user_id,esporte,mercado", ignoreDuplicates: true }
             );
+          if (sugestaoError) {
+            console.warn("Falha ao salvar sugestão de mercado:", sugestaoError);
+          }
         } catch {
           // ignore
         }
@@ -478,7 +587,7 @@ export default function RegistrarEntradasPage() {
       setMercadoTexto("");
       setDescricao("");
       setSugestoesMercado([]);
-      setResultado("");
+      setResultado("pendente");
       setValorApostado(0);
       setValorResultado(0);
 
@@ -487,17 +596,21 @@ export default function RegistrarEntradasPage() {
         `Esporte: ${esporteFinal}\n` +
         (mercadoFinal ? `Mercado: ${mercadoFinal}\n` : "") +
         (observacoesFinal ? `Descrição: ${observacoesFinal}\n` : "") +
-        `Stake: ${percentStake}%\n` +
+        `Unidades: ${percentStake} un\n` +
         `Valor Apostado: R$ ${valorApostado.toLocaleString("pt-BR", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}\n` +
         `Odd: ${oddValue.toFixed(2)}\n` +
-        `Resultado: ${resultado === "green" ? "Green" : "Red"}\n` +
-        `Valor Resultado: R$ ${valorResultado >= 0 ? "+" : ""}${valorResultado.toLocaleString("pt-BR", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}\n\n` +
+        `Resultado: ${
+          resultado === "pendente" ? "Pendente" : resultado === "green" ? "Green" : "Red"
+        }\n` +
+        (resultado === "pendente"
+          ? "\n"
+          : `Valor Resultado: R$ ${valorResultado >= 0 ? "+" : ""}${valorResultado.toLocaleString("pt-BR", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}\n\n`) +
         `Acesse "Minhas Entradas" para ver todas as suas entradas.`
       );
     } catch (error) {
@@ -510,13 +623,35 @@ export default function RegistrarEntradasPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className={`text-2xl font-semibold ${textPrimary}`}>
-          Registrar Entradas
-        </h1>
-        <p className={`mt-1 text-sm ${textSecondary}`}>
-          Registre uma nova entrada com stake, odd e resultado
-        </p>
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard/registrar-entradas/tipo")}
+          className={`mt-0.5 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold cursor-pointer transition-colors ${
+            theme === "dark"
+              ? "bg-zinc-900 border-zinc-800 text-zinc-200 hover:bg-zinc-800"
+              : "bg-white border-zinc-200 text-zinc-800 hover:bg-zinc-50"
+          }`}
+          aria-label="Voltar"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+          </svg>
+          <span>Voltar</span>
+        </button>
+
+        <div>
+          <h1 className={`text-2xl font-semibold ${textPrimary}`}>Registrar Entradas</h1>
+          <p className={`mt-1 text-sm ${textSecondary}`}>
+            Registre uma nova entrada com unidades, odd e resultado
+          </p>
+        </div>
       </div>
 
       <div className="max-w-2xl">
@@ -556,7 +691,7 @@ export default function RegistrarEntradasPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Stake */}
+            {/* Unidade */}
             <div>
               <button
                 type="button"
@@ -571,7 +706,7 @@ export default function RegistrarEntradasPage() {
               >
                 <div className="flex items-center justify-between">
                   <span className={`text-sm font-medium ${textPrimary}`}>
-                    Selecionar stake
+                    Selecionar unidade
                   </span>
                   <span className={`text-xs ${textTertiary}`}>
                     {stakeSelecionada ? `✓ ${stakeLabel()}` : "Clique para selecionar"}
@@ -609,17 +744,14 @@ export default function RegistrarEntradasPage() {
                       />
                       <div className="flex-1">
                         <div className={`text-sm font-medium ${textPrimary}`}>
-                          {stake}%
+                      {stake} un{" "}
+                      {bancaInicial && bancaInicial > 0
+                        ? `(R$ ${((bancaInicial * stake) / 100).toLocaleString("pt-BR", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })})`
+                        : ""}
                         </div>
-                        {bancaInicial && bancaInicial > 0 && (
-                          <div className={`text-xs ${textTertiary}`}>
-                            R${" "}
-                            {((bancaInicial * stake) / 100).toLocaleString("pt-BR", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </div>
-                        )}
                       </div>
                     </label>
                   ))}
@@ -627,7 +759,7 @@ export default function RegistrarEntradasPage() {
                   {stakesPersonalizadas.length > 0 && (
                     <div className={`pt-2 mt-2 border-t ${cardBorder}`}>
                       <div className={`text-xs font-semibold ${textTertiary} mb-2`}>
-                        Stakes personalizadas
+                        Unidades personalizadas
                       </div>
                       <div className="space-y-2">
                         {stakesPersonalizadas.map((s) => {
@@ -653,17 +785,14 @@ export default function RegistrarEntradasPage() {
                               />
                               <div className="flex-1">
                                 <div className={`text-sm font-medium ${textPrimary}`}>
-                                  {s.percent}%
+                                  {s.percent} un{" "}
+                                  {base > 0
+                                    ? `(R$ ${valor.toLocaleString("pt-BR", {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                      })})`
+                                    : ""}
                                 </div>
-                                {base > 0 && (
-                                  <div className={`text-xs ${textTertiary}`}>
-                                    R${" "}
-                                    {valor.toLocaleString("pt-BR", {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2,
-                                    })}
-                                  </div>
-                                )}
                               </div>
                             </label>
                           );
@@ -683,14 +812,14 @@ export default function RegistrarEntradasPage() {
                     />
                     <div className="flex-1">
                       <div className={`text-sm font-medium ${textPrimary} mb-1`}>
-                        Outra (customizada)
+                        Outra unidade (customizada)
                       </div>
                       {stakeSelecionada === "custom" && (
                         <div className="space-y-2">
                           <input
                             type="text"
                             inputMode="decimal"
-                            placeholder="Digite a stake (ex: 1.5)"
+                            placeholder="Digite as unidades (ex: 1.5)"
                             value={stakeCustomizada}
                             onChange={(e) => {
                               const value = e.target.value.replace(/[^\d,.-]/g, "");
@@ -722,16 +851,24 @@ export default function RegistrarEntradasPage() {
 
             {/* Valor Apostado (calculado automaticamente) */}
             {valorApostado > 0 && (
-              <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="text-xs text-blue-600 mb-1">Valor Apostado</div>
-                <div className="text-xl font-semibold text-blue-700">
+              <div
+                className={`p-4 rounded-lg border ${
+                  theme === "dark"
+                    ? "bg-blue-900/20 border-blue-800"
+                    : "bg-blue-50 border-blue-200"
+                }`}
+              >
+                <div className="text-xs mb-1 text-blue-600 dark:text-blue-200">
+                  Valor Apostado
+                </div>
+                <div className="text-xl font-semibold text-blue-700 dark:text-blue-100">
                   R$ {valorApostado.toLocaleString("pt-BR", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </div>
-                <div className="text-xs text-blue-500 mt-1">
-                  Calculado automaticamente baseado na banca e stake
+                <div className="text-xs mt-1 text-blue-500 dark:text-blue-200/80">
+                  Calculado automaticamente baseado na banca e unidades
                 </div>
               </div>
             )}
@@ -755,7 +892,7 @@ export default function RegistrarEntradasPage() {
                   const value = e.target.value.replace(/[^\d,.-]/g, "");
                   setOdd(value);
                 }}
-                className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent`}
+                className={`w-full p-3 rounded-lg border bg-white text-zinc-900 placeholder-zinc-400 border-zinc-300 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent`}
                 required
               />
             </div>
@@ -869,18 +1006,48 @@ export default function RegistrarEntradasPage() {
 
             {/* Mercado (opcional) + sugestões por esporte */}
             <div>
-              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                Mercado Utilizado <span className={`${textTertiary}`}>(opcional)</span>
-              </label>
-              <input
-                type="text"
-                placeholder={esporteFinalValue() ? "Ex: Ambas marcam, Handicap, Over 2.5..." : "Selecione um esporte primeiro"}
-                value={mercadoTexto}
-                onChange={(e) => setMercadoTexto(e.target.value)}
-                disabled={!esporteFinalValue()}
-                list="mercado-sugestoes"
-                className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent disabled:opacity-60`}
-              />
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <label className={`block text-sm font-medium ${textSecondary}`}>
+                  Mercado Utilizado <span className={`${textTertiary}`}>(opcional)</span>
+                </label>
+              </div>
+
+              <div className="flex items-stretch gap-2">
+                <input
+                  type="text"
+                  placeholder={esporteFinalValue() ? "Ex: Ambas marcam, Handicap, Over 2.5..." : "Selecione um esporte primeiro"}
+                  value={mercadoTexto}
+                  onChange={(e) => setMercadoTexto(e.target.value)}
+                  onBlur={() => {
+                    // Salva como sugestão ao sair do campo (sem precisar registrar a entrada)
+                    void saveMercadoSugestaoIfNeeded();
+                  }}
+                  disabled={!esporteFinalValue()}
+                  list="mercado-sugestoes"
+                  className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent disabled:opacity-60`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!esporteFinalValue()) {
+                      alert("Selecione um esporte antes de adicionar um mercado.");
+                      return;
+                    }
+                    setNovoMercadoNome(mercadoTexto.trim());
+                    setModalMercadoOpen(true);
+                  }}
+                  disabled={!esporteFinalValue()}
+                  className={`w-11 rounded-lg border font-semibold cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                    theme === "dark"
+                      ? "border-zinc-700 bg-zinc-800 text-zinc-100 hover:bg-zinc-700"
+                      : "border-zinc-300 bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
+                  }`}
+                  aria-label="Adicionar mercado"
+                  title="Adicionar mercado"
+                >
+                  +
+                </button>
+              </div>
               <datalist id="mercado-sugestoes">
                 {sugestoesMercado.map((m) => (
                   <option key={m} value={m} />
@@ -890,7 +1057,7 @@ export default function RegistrarEntradasPage() {
               {esporteFinalValue() && (
                 <div className="mt-2">
                   <div className={`text-xs ${textTertiary}`}>
-                    {loadingSugestoes ? "Carregando sugestões..." : sugestoesMercado.length > 0 ? "Sugestões:" : "Sem sugestões ainda — ao registrar, salvamos como sugestão."}
+                    {loadingSugestoes ? "Carregando mercados..." : sugestoesMercado.length > 0 ? "Mercados salvos" : "Sem mercados salvos ainda — ao registrar, salvamos como mercado."}
                   </div>
                   {sugestoesMercado.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -936,12 +1103,40 @@ export default function RegistrarEntradasPage() {
               <label className={`block text-sm font-medium ${textSecondary} mb-3`}>
                 Resultado
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <label
-                  className={`flex items-center justify-center p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                  className={`flex items-center justify-center p-4 rounded-lg border cursor-pointer transition-colors ${
+                    resultado === "pendente"
+                      ? "bg-zinc-600 border-zinc-600 hover:bg-zinc-700"
+                      : theme === "dark"
+                      ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800"
+                      : "bg-white border-zinc-300 hover:bg-zinc-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="resultado"
+                    value="pendente"
+                    checked={resultado === "pendente"}
+                    onChange={(e) => setResultado(e.target.value as "pendente")}
+                    className="mr-2"
+                  />
+                  <span
+                    className={`font-semibold ${
+                      resultado === "pendente" ? "text-white" : textPrimary
+                    }`}
+                  >
+                    Pendente
+                  </span>
+                </label>
+
+                <label
+                  className={`flex items-center justify-center p-4 rounded-lg border cursor-pointer transition-colors ${
                     resultado === "green"
-                      ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                      : `${cardBorder} ${hoverBg}`
+                      ? "bg-green-600 border-green-600 hover:bg-green-700"
+                      : theme === "dark"
+                      ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800"
+                      : "bg-white border-zinc-300 hover:bg-zinc-50"
                   }`}
                 >
                   <input
@@ -954,7 +1149,7 @@ export default function RegistrarEntradasPage() {
                   />
                   <span
                     className={`font-semibold ${
-                      resultado === "green" ? "text-green-700 dark:text-green-400" : textPrimary
+                      resultado === "green" ? "text-white" : textPrimary
                     }`}
                   >
                     Green
@@ -962,10 +1157,12 @@ export default function RegistrarEntradasPage() {
                 </label>
 
                 <label
-                  className={`flex items-center justify-center p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                  className={`flex items-center justify-center p-4 rounded-lg border cursor-pointer transition-colors ${
                     resultado === "red"
-                      ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                      : `${cardBorder} ${hoverBg}`
+                      ? "bg-red-600 border-red-600 hover:bg-red-700"
+                      : theme === "dark"
+                      ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800"
+                      : "bg-white border-zinc-300 hover:bg-zinc-50"
                   }`}
                 >
                   <input
@@ -978,7 +1175,7 @@ export default function RegistrarEntradasPage() {
                   />
                   <span
                     className={`font-semibold ${
-                      resultado === "red" ? "text-red-700 dark:text-red-400" : textPrimary
+                      resultado === "red" ? "text-white" : textPrimary
                     }`}
                   >
                     Red
@@ -988,24 +1185,32 @@ export default function RegistrarEntradasPage() {
             </div>
 
             {/* Valor Resultado (calculado automaticamente) */}
-            {valorResultado !== 0 && (
+            {resultado !== "pendente" && valorApostado > 0 && odd && (
               <div
                 className={`p-4 rounded-lg border ${
                   valorResultado >= 0
-                    ? "bg-green-50 border-green-200"
+                    ? theme === "dark"
+                      ? "bg-green-900/20 border-green-800"
+                      : "bg-green-50 border-green-200"
+                    : theme === "dark"
+                    ? "bg-red-900/20 border-red-800"
                     : "bg-red-50 border-red-200"
                 }`}
               >
                 <div
                   className={`text-xs mb-1 ${
-                    valorResultado >= 0 ? "text-green-600" : "text-red-600"
+                    valorResultado >= 0
+                      ? "text-green-600 dark:text-green-200"
+                      : "text-red-600 dark:text-red-200"
                   }`}
                 >
                   Resultado Calculado
                 </div>
                 <div
                   className={`text-xl font-semibold ${
-                    valorResultado >= 0 ? "text-green-700" : "text-red-700"
+                    valorResultado >= 0
+                      ? "text-green-700 dark:text-green-100"
+                      : "text-red-700 dark:text-red-100"
                   }`}
                 >
                   {valorResultado >= 0 ? "+" : ""}
@@ -1017,7 +1222,9 @@ export default function RegistrarEntradasPage() {
                 </div>
                 <div
                   className={`text-xs mt-1 ${
-                    valorResultado >= 0 ? "text-green-500" : "text-red-500"
+                    valorResultado >= 0
+                      ? "text-green-500 dark:text-green-200/80"
+                      : "text-red-500 dark:text-red-200/80"
                   }`}
                 >
                   {resultado === "green"
@@ -1050,6 +1257,83 @@ export default function RegistrarEntradasPage() {
           </form>
         </div>
       </div>
+
+      {modalMercadoOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            onClick={() => {
+              if (!savingMercado) {
+                setModalMercadoOpen(false);
+                setNovoMercadoNome("");
+              }
+            }}
+            className="absolute inset-0 bg-black/40"
+            aria-label="Fechar modal"
+          />
+
+          <div
+            className={`relative w-full max-w-lg rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-xl`}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="mb-4">
+              <h3 className={`text-lg font-semibold ${textPrimary}`}>Adicionar Mercado</h3>
+              <p className={`mt-1 text-sm ${textSecondary}`}>
+                Salva este mercado vinculado ao esporte selecionado para aparecer nas sugestões.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className={`block text-sm font-medium ${textSecondary}`}>
+                Nome do mercado
+              </label>
+              <input
+                type="text"
+                value={novoMercadoNome}
+                onChange={(e) => setNovoMercadoNome(e.target.value)}
+                placeholder="Ex: Handicap, Cantos, Over 2.5..."
+                className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent`}
+                autoFocus
+              />
+              <p className={`text-xs ${textTertiary}`}>
+                Duplicados são ignorados automaticamente (por esporte).
+              </p>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!savingMercado) {
+                    setModalMercadoOpen(false);
+                    setNovoMercadoNome("");
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors ${
+                  theme === "dark"
+                    ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                }`}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleAddMercado()}
+                disabled={savingMercado || !novoMercadoNome.trim()}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-colors ${
+                  theme === "dark"
+                    ? "bg-zinc-700 text-white hover:bg-zinc-600"
+                    : "bg-zinc-900 text-white hover:bg-zinc-800"
+                }`}
+              >
+                {savingMercado ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

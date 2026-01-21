@@ -548,7 +548,7 @@ export default function RelatoriosPage() {
           <div className={`rounded-xl border ${cardBorder} ${
             theme === "dark" ? "bg-zinc-800" : "bg-zinc-50"
           } p-4`}>
-            <div className={`text-xs font-medium ${textSecondary} mb-1`}>Stake Total (R$)</div>
+            <div className={`text-xs font-medium ${textSecondary} mb-1`}>Unidades Totais (R$)</div>
             <div className={`text-xl font-bold ${textPrimary}`}>
               R$ {stakeTotal.toLocaleString("pt-BR", {
                 minimumFractionDigits: 2,

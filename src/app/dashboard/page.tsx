@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -158,10 +160,6 @@ export default function DashboardHome() {
       }
 
       const bancaInicialNum = bancaData ? toNumber(bancaData.valor) : 0;
-      const stakeBaseNum =
-        bancaData?.stake_base !== null && bancaData?.stake_base !== undefined
-          ? toNumber(bancaData.stake_base)
-          : bancaInicialNum;
 
       if (bancaInicialNum > 0) {
         setBancaInicial(bancaInicialNum);
@@ -172,7 +170,7 @@ export default function DashboardHome() {
       const { inicio, fim } = getDateRange();
 
       // Busca entradas com filtro de data
-      let query = supabase
+      const query = supabase
         .from("entradas")
         .select("*")
         .eq("user_id", user.id)
@@ -220,7 +218,6 @@ export default function DashboardHome() {
           const lucro = (somaResultados / bancaInicialNum) * 100;
           setLucroBanca(lucro);
         }
-
       }
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -701,41 +698,16 @@ export default function DashboardHome() {
         </h2>
         <div className="flex flex-wrap gap-3 mb-4">
           <a
-            href="https://go.aff.lotogreen.com/d9fxj6w5"
+            href="https://go.aff.esportiva.bet/s0gwocy0"
             target="_blank"
             rel="noopener noreferrer"
             className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
               theme === "dark"
-                ? "bg-green-600 hover:bg-green-700"
-                : "bg-green-600 hover:bg-green-700"
+                ? "bg-orange-600 hover:bg-orange-700"
+                : "bg-orange-600 hover:bg-orange-700"
             }`}
           >
-            <span>Lotogreen</span>
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-              />
-            </svg>
-          </a>
-          <a
-            href="https://www.bet365.bet.br/hub/pt-br/open-account?affiliate=365_03711474"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
-              theme === "dark"
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
-          >
-            <span>Bet365</span>
+            <span>Esportiva</span>
             <svg
               className="w-4 h-4"
               fill="none"
@@ -752,16 +724,16 @@ export default function DashboardHome() {
           </a>
 
           <a
-            href="https://go.aff.esportiva.bet/s0gwocy0"
+            href="https://www.bet365.bet.br/hub/pt-br/open-account?affiliate=365_03711474"
             target="_blank"
             rel="noopener noreferrer"
             className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
               theme === "dark"
-                ? "bg-zinc-900 hover:bg-zinc-800"
-                : "bg-zinc-900 hover:bg-zinc-800"
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "bg-blue-600 hover:bg-blue-700"
             }`}
           >
-            <span>Esportiva</span>
+            <span>Bet365</span>
             <svg
               className="w-4 h-4"
               fill="none"

@@ -39,6 +39,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { theme } = useTheme();
+  const pathname = usePathname();
+  const isAnalisesActive = pathname === "/admin/analises-ia" || pathname === "/admin";
 
   return (
     <div className={`min-h-screen ${
@@ -59,18 +61,43 @@ export default function AdminLayout({
             <div className={`text-sm font-semibold ${
               theme === "dark" ? "text-white" : "text-zinc-900"
             }`}>
-              Admin Panel
+              Painel Editorial
             </div>
             <div className={`mt-1 text-xs ${
               theme === "dark" ? "text-zinc-400" : "text-zinc-500"
             }`}>
-              Painel administrativo
+              Publicação de análises
             </div>
           </div>
 
           <nav className="space-y-1">
-            <NavItem href="/admin" label="Dashboard" />
-            <NavItem href="/admin/users" label="Gerenciar Usuários" />
+            <Link
+              href="/admin/analises-ia"
+              className={`block rounded-2xl border px-4 py-3 text-sm font-semibold transition-all ${
+                isAnalisesActive
+                  ? theme === "dark"
+                    ? "border-emerald-500/40 bg-emerald-900/20 text-emerald-200 shadow-lg shadow-emerald-500/10"
+                    : "border-emerald-300 bg-emerald-50 text-emerald-800 shadow-md"
+                  : theme === "dark"
+                    ? "border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800"
+                    : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+              }`}
+            >
+              Análises da IA
+              <div className={`mt-1 text-xs font-medium ${
+                isAnalisesActive
+                  ? theme === "dark"
+                    ? "text-emerald-200/80"
+                    : "text-emerald-700"
+                  : theme === "dark"
+                    ? "text-zinc-400"
+                    : "text-zinc-500"
+              }`}>
+                Painel de publicação
+              </div>
+            </Link>
+
+            <NavItem href="/admin/entradas-publicadas" label="Entradas publicadas" />
           </nav>
 
           <div className="mt-4">

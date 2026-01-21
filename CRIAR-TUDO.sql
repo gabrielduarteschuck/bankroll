@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS public.banca (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   valor DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  valor_unidade DECIMAL(10, 2) NOT NULL DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   CONSTRAINT banca_user_id_unique UNIQUE (user_id)
@@ -10,9 +11,15 @@ CREATE TABLE IF NOT EXISTS public.banca (
 
 -- Adicionar coluna valor se não existir
 ALTER TABLE public.banca ADD COLUMN IF NOT EXISTS valor DECIMAL(10, 2);
+ALTER TABLE public.banca ADD COLUMN IF NOT EXISTS valor_unidade DECIMAL(10, 2);
 UPDATE public.banca SET valor = 0 WHERE valor IS NULL;
+UPDATE public.banca
+SET valor_unidade = (valor * 0.01)
+WHERE valor_unidade IS NULL OR valor_unidade <= 0;
 ALTER TABLE public.banca ALTER COLUMN valor SET NOT NULL;
 ALTER TABLE public.banca ALTER COLUMN valor SET DEFAULT 0;
+ALTER TABLE public.banca ALTER COLUMN valor_unidade SET NOT NULL;
+ALTER TABLE public.banca ALTER COLUMN valor_unidade SET DEFAULT 0;
 
 -- Criar tabela ENTRADAS
 CREATE TABLE IF NOT EXISTS public.entradas (
@@ -117,3 +124,65 @@ CREATE POLICY "stakes_personalizadas_delete_own"
 ON public.stakes_personalizadas
 FOR DELETE
 USING (user_id = auth.uid());
+
+-- ============================================================================
+-- Apostas múltiplas (pai + itens)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.apostas_multiplas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  unidades NUMERIC(10, 2) NOT NULL,
+  valor_unidade NUMERIC(10, 2) NOT NULL,
+  valor_apostado NUMERIC(10, 2) NOT NULL,
+  odd_combinada NUMERIC(10, 4) NOT NULL,
+  casa TEXT,
+  tipster TEXT,
+  data_aposta DATE,
+  resultado VARCHAR(10) NOT NULL CHECK (resultado IN ('green', 'red', 'pendente')) DEFAULT 'pendente',
+  valor_resultado NUMERIC(10, 2),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.apostas_multiplas_itens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  multipla_id UUID NOT NULL REFERENCES public.apostas_multiplas(id) ON DELETE CASCADE,
+  esporte TEXT NOT NULL,
+  evento TEXT NOT NULL,
+  mercado TEXT,
+  odd NUMERIC(10, 4) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.apostas_multiplas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.apostas_multiplas_itens ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "apostas_multiplas_select_own" ON public.apostas_multiplas;
+DROP POLICY IF EXISTS "apostas_multiplas_insert_own" ON public.apostas_multiplas;
+DROP POLICY IF EXISTS "apostas_multiplas_update_own" ON public.apostas_multiplas;
+DROP POLICY IF EXISTS "apostas_multiplas_delete_own" ON public.apostas_multiplas;
+
+CREATE POLICY "apostas_multiplas_select_own" ON public.apostas_multiplas
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "apostas_multiplas_insert_own" ON public.apostas_multiplas
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "apostas_multiplas_update_own" ON public.apostas_multiplas
+  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "apostas_multiplas_delete_own" ON public.apostas_multiplas
+  FOR DELETE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "apostas_multiplas_itens_select_own" ON public.apostas_multiplas_itens;
+DROP POLICY IF EXISTS "apostas_multiplas_itens_insert_own" ON public.apostas_multiplas_itens;
+DROP POLICY IF EXISTS "apostas_multiplas_itens_update_own" ON public.apostas_multiplas_itens;
+DROP POLICY IF EXISTS "apostas_multiplas_itens_delete_own" ON public.apostas_multiplas_itens;
+
+CREATE POLICY "apostas_multiplas_itens_select_own" ON public.apostas_multiplas_itens
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "apostas_multiplas_itens_insert_own" ON public.apostas_multiplas_itens
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "apostas_multiplas_itens_update_own" ON public.apostas_multiplas_itens
+  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "apostas_multiplas_itens_delete_own" ON public.apostas_multiplas_itens
+  FOR DELETE USING (auth.uid() = user_id);

@@ -26,16 +26,16 @@ export default function ComoFuncionaPage() {
         </h2>
         <div className={`space-y-3 text-sm ${textSecondary}`}>
           <p>
-            1. <strong>Defina sua Banca:</strong> Acesse a página "Banca" e
+            1. <strong>Defina sua Banca:</strong> Acesse a página &quot;Banca&quot; e
             informe o valor inicial da sua banca.
           </p>
           <p>
-            2. <strong>Registre Entradas:</strong> Vá em "Registrar Entradas"
-            e preencha stake, odd, mercado e resultado de cada aposta.
+            2. <strong>Registre Entradas:</strong> Vá em &quot;Registrar Entradas&quot;
+            e preencha unidades, odd, mercado e resultado de cada aposta.
           </p>
           <p>
             3. <strong>Acompanhe Resultados:</strong> Veja todas suas entradas
-            em "Minhas Entradas" e acompanhe métricas em "Relatórios".
+            em &quot;Minhas Entradas&quot; e acompanhe métricas em &quot;Relatórios&quot;.
           </p>
           <p>
             4. <strong>Analise Performance:</strong> Use os gráficos e

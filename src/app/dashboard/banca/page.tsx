@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -159,14 +161,14 @@ export default function BancaPage() {
           );
           return;
         }
-        alert(`Erro ao salvar stake personalizada: ${error.message}`);
+        alert(`Erro ao salvar unidade personalizada: ${error.message}`);
         return;
       }
 
       await loadStakesPersonalizadas();
       setModalStakeOpen(false);
       setStakePercentInput("");
-      alert("✅ Stake personalizada salva com sucesso!");
+      alert("✅ Unidade personalizada salva com sucesso!");
     } finally {
       setSavingStake(false);
     }
@@ -385,7 +387,7 @@ export default function BancaPage() {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}`
-            : `✅ Base de stake salva com sucesso!\n\nValor: R$ ${valorBanca.toLocaleString("pt-BR", {
+            : `✅ Base de unidade salva com sucesso!\n\nValor: R$ ${valorBanca.toLocaleString("pt-BR", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}\n\nA banca inicial permanece a primeira banca definida.`
@@ -407,11 +409,11 @@ export default function BancaPage() {
 
     if (
       !confirm(
-        `Tem certeza que deseja reajustar a base de stake para R$ ${bancaAtual.toLocaleString("pt-BR", {
+        `Tem certeza que deseja reajustar a base de unidade para R$ ${bancaAtual.toLocaleString("pt-BR", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}?\n\n` +
-        `Isso fará com que as stakes sejam recalculadas com base na nova base de stake (a banca inicial não muda).`
+        `Isso fará com que as unidades sejam recalculadas com base na nova base de unidade (a banca inicial não muda).`
       )
     ) {
       return;
@@ -446,7 +448,7 @@ export default function BancaPage() {
 
         if (stakeBaseMissing) {
           alert(
-            "Para usar o reajuste de stake, aplique a migration `0010_add_stake_base_to_banca.sql` no Supabase (coluna stake_base)."
+            "Para usar o reajuste de unidade, aplique a migration `0010_add_stake_base_to_banca.sql` no Supabase (coluna stake_base)."
           );
         } else {
           console.error("Erro ao reajustar stake:", {
@@ -455,18 +457,18 @@ export default function BancaPage() {
             details: error.details,
             hint: error.hint,
           });
-          alert(`Erro ao reajustar stake: ${error.message}`);
+          alert(`Erro ao reajustar unidade: ${error.message}`);
         }
       } else {
         // Recarrega os dados
         await loadBanca();
         alert(
-          `✅ Base de stake reajustada com sucesso!\n\n` +
-          `Nova base de stake: R$ ${bancaAtual.toLocaleString("pt-BR", {
+          `✅ Base de unidade reajustada com sucesso!\n\n` +
+          `Nova base de unidade: R$ ${bancaAtual.toLocaleString("pt-BR", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}\n\n` +
-          `As stakes serão calculadas com base neste novo valor (a banca inicial permanece a mesma).`
+          `As unidades serão calculadas com base neste novo valor (a banca inicial permanece a mesma).`
         );
       }
     } catch (error: any) {
@@ -498,7 +500,7 @@ export default function BancaPage() {
       <div>
         <h1 className={`text-2xl font-semibold ${textPrimary}`}>Banca</h1>
         <p className={`mt-1 text-sm ${textSecondary}`}>
-          Defina o valor da banca inicial para calcular as stakes automaticamente
+          Defina o valor da banca inicial para calcular as unidades automaticamente
         </p>
       </div>
 
@@ -537,7 +539,7 @@ export default function BancaPage() {
             </div>
           )}
 
-          {/* Base de Stake */}
+          {/* Base de Unidade */}
           {stakeBase !== null && (
             <div className={`mb-4 p-4 rounded-lg border-2 ${
               theme === "dark"
@@ -545,7 +547,7 @@ export default function BancaPage() {
                 : "bg-zinc-50 border-zinc-300"
             }`}>
               <div className={`text-xs font-semibold mb-1 ${textSecondary}`}>
-                Base de Stake
+                Base de Unidade
               </div>
               <div className={`text-2xl font-bold ${textPrimary}`}>
                 R$ {stakeBase.toLocaleString("pt-BR", {
@@ -554,7 +556,7 @@ export default function BancaPage() {
                 })}
               </div>
               <div className={`text-xs mt-1 ${textTertiary}`}>
-                Valor usado para calcular as stakes (pode ser reajustado)
+                Valor usado para calcular as unidades (pode ser reajustado)
               </div>
             </div>
           )}
@@ -648,7 +650,7 @@ export default function BancaPage() {
             </button>
           </form>
 
-          {/* Botão para reajustar stake */}
+          {/* Botão para reajustar unidade */}
           {bancaAtual !== null && bancaInicial !== null && bancaAtual !== bancaInicial && (
             <div className={`mt-4 pt-4 border-t ${cardBorder}`}>
               <button
@@ -658,10 +660,10 @@ export default function BancaPage() {
               >
                 {reajustando
                   ? "Reajustando..."
-                  : "Reajustar Stake para Banca Atual"}
+                  : "Reajustar Unidade para Banca Atual"}
               </button>
               <p className={`text-xs ${textTertiary} mt-2 text-center`}>
-                Atualiza apenas a base de stake para o valor atual ({bancaAtual.toLocaleString("pt-BR", {
+                Atualiza apenas a base de unidade para o valor atual ({bancaAtual.toLocaleString("pt-BR", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })})
@@ -673,7 +675,7 @@ export default function BancaPage() {
         {/* Visualização das Stakes */}
         <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-sm`}>
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className={`text-lg font-semibold ${textPrimary}`}>Stakes Calculadas</h2>
+            <h2 className={`text-lg font-semibold ${textPrimary}`}>Unidades Calculadas</h2>
             <button
               type="button"
               onClick={() => setModalStakeOpen(true)}
@@ -683,11 +685,11 @@ export default function BancaPage() {
                   : "bg-zinc-900 text-white hover:bg-zinc-800"
               }`}
             >
-              Criar stake personalizada
+              Criar unidade personalizada
             </button>
           </div>
           <p className={`text-xs ${textTertiary} mb-4`}>
-            Valores calculados automaticamente baseados na <strong>base de stake</strong> (apenas para visualização)
+            Valores calculados automaticamente baseados na <strong>base de unidade</strong> (apenas para visualização)
           </p>
 
           <div className="space-y-3">
@@ -702,9 +704,9 @@ export default function BancaPage() {
                 >
                   <div>
                     <div className={`text-sm font-medium ${textSecondary}`}>
-                      {stake}%
+                      {stake} un
                     </div>
-                    <div className={`text-xs ${textTertiary}`}>Stake</div>
+                    <div className={`text-xs ${textTertiary}`}>Unidade</div>
                   </div>
                   <div className="text-right">
                     <div className={`text-lg font-semibold ${textPrimary}`}>
@@ -733,7 +735,7 @@ export default function BancaPage() {
                     >
                       <div>
                         <div className={`text-sm font-medium ${textSecondary}`}>
-                          {s.percent}%
+                          {s.percent} un
                         </div>
                         <div className={`text-xs ${textTertiary}`}>{s.nome}</div>
                       </div>
@@ -760,7 +762,7 @@ export default function BancaPage() {
                   : "bg-amber-50 border-amber-300 text-amber-950"
               }`}
             >
-              Defina sua banca inicial para ver as stakes calculadas.
+              Defina sua banca inicial para ver as unidades calculadas.
             </div>
           )}
         </div>
@@ -787,10 +789,10 @@ export default function BancaPage() {
           >
             <div className="mb-4">
               <h3 className={`text-lg font-semibold ${textPrimary}`}>
-                Criar stake personalizada
+                Criar unidade personalizada
               </h3>
               <p className={`mt-1 text-sm ${textSecondary}`}>
-                Defina uma stake em % da sua banca (base de stake).
+                Defina uma unidade em % da sua banca (base de unidade).
               </p>
             </div>
 
@@ -808,7 +810,7 @@ export default function BancaPage() {
 
               <div>
                 <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                  Valor da stake (% da banca)
+                  Valor da unidade (% da banca)
                 </label>
                 <input
                   type="text"
@@ -822,7 +824,7 @@ export default function BancaPage() {
                   className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent`}
                 />
                 <p className={`text-xs ${textTertiary} mt-2`}>
-                  Exemplo: 1 significa 1% da base de stake.
+                  Exemplo: 1 significa 1% da base de unidade.
                 </p>
               </div>
             </div>

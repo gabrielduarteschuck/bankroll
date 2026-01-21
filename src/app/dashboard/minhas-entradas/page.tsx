@@ -1,6 +1,9 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -32,6 +35,29 @@ type Entrada = {
   created_at: string;
 };
 
+type Multipla = {
+  id: string;
+  unidades: number;
+  valor_unidade: number;
+  valor_apostado: number;
+  odd_combinada: number;
+  casa: string | null;
+  tipster: string | null;
+  data_aposta: string | null;
+  resultado: "green" | "red" | "pendente";
+  valor_resultado: number | null;
+  created_at: string;
+};
+
+type MultiplaItem = {
+  id: string;
+  multipla_id: string;
+  esporte: string;
+  evento: string;
+  mercado: string | null;
+  odd: number;
+};
+
 type FiltroPeriodo = 
   | "hoje"
   | "ontem"
@@ -44,9 +70,15 @@ type FiltroPeriodo =
   | "todos";
 
 export default function MinhasEntradasPage() {
+  const searchParams = useSearchParams();
+  const highlightMultiplaId = searchParams.get("multipla");
   const { theme } = useTheme();
   const [entradas, setEntradas] = useState<Entrada[]>([]);
   const [entradasFiltradas, setEntradasFiltradas] = useState<Entrada[]>([]);
+  const [multiplas, setMultiplas] = useState<Multipla[]>([]);
+  const [multiplasItens, setMultiplasItens] = useState<Record<string, MultiplaItem[]>>({});
+  const [editingMultiplaId, setEditingMultiplaId] = useState<string | null>(null);
+  const [editMultiplaResultado, setEditMultiplaResultado] = useState<"pendente" | "green" | "red">("pendente");
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,6 +97,7 @@ export default function MinhasEntradasPage() {
   const inputBg = theme === "dark" ? "bg-zinc-800" : "bg-white";
   const inputBorder = theme === "dark" ? "border-zinc-700" : "border-zinc-300";
   const inputText = theme === "dark" ? "text-white" : "text-zinc-900";
+  const infoBg = theme === "dark" ? "bg-zinc-800" : "bg-zinc-50";
 
   // Estados para edição
   const [editStake, setEditStake] = useState<string>("");
@@ -236,10 +269,99 @@ export default function MinhasEntradasPage() {
       if (data) {
         setEntradas(data as Entrada[]);
       }
+
+      // Carrega múltiplas (best-effort)
+      try {
+        const { data: mData, error: mErr } = await supabase
+          .from("apostas_multiplas")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(100);
+
+        if (!mErr && mData) {
+          const mList = mData as any as Multipla[];
+          setMultiplas(mList);
+
+          const ids = mList.map((m) => m.id);
+          if (ids.length > 0) {
+            const { data: iData, error: iErr } = await supabase
+              .from("apostas_multiplas_itens")
+              .select("*")
+              .eq("user_id", user.id)
+              .in("multipla_id", ids);
+
+            if (!iErr && iData) {
+              const grouped: Record<string, MultiplaItem[]> = {};
+              for (const it of iData as any as MultiplaItem[]) {
+                const key = String(it.multipla_id);
+                grouped[key] = grouped[key] || [];
+                grouped[key].push(it);
+              }
+              setMultiplasItens(grouped);
+            } else {
+              setMultiplasItens({});
+            }
+          } else {
+            setMultiplasItens({});
+          }
+        } else {
+          setMultiplas([]);
+          setMultiplasItens({});
+        }
+      } catch {
+        setMultiplas([]);
+        setMultiplasItens({});
+      }
     } catch (error) {
       console.error("Erro ao carregar entradas:", error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function formatDateOnly(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
+  async function saveMultiplaResultado(m: Multipla) {
+    setSaving(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        alert("Usuário não autenticado");
+        return;
+      }
+
+      const newRes = editMultiplaResultado;
+      const valorResultado =
+        newRes === "pendente"
+          ? null
+          : newRes === "green"
+          ? (Number(m.valor_apostado) || 0) * (Number(m.odd_combinada) || 0) - (Number(m.valor_apostado) || 0)
+          : -(Number(m.valor_apostado) || 0);
+
+      const { error } = await supabase
+        .from("apostas_multiplas")
+        .update({ resultado: newRes, valor_resultado: valorResultado, updated_at: new Date().toISOString() })
+        .eq("id", m.id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        alert("Erro ao atualizar resultado da múltipla");
+        return;
+      }
+
+      setMultiplas((prev) =>
+        prev.map((x) => (x.id === m.id ? { ...x, resultado: newRes, valor_resultado: valorResultado } : x))
+      );
+      setEditingMultiplaId(null);
+      alert("Múltipla atualizada com sucesso!");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -293,7 +415,7 @@ export default function MinhasEntradasPage() {
         : null;
 
       if (isNaN(stakeValue) || stakeValue <= 0) {
-        alert("Stake inválida");
+        alert("Unidade inválida");
         setSaving(false);
         return;
       }
@@ -565,19 +687,211 @@ export default function MinhasEntradasPage() {
         </div>
       </div>
 
+      {/* Múltiplas */}
+      {multiplas.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className={`text-lg font-semibold ${textPrimary}`}>Múltiplas</h2>
+            {highlightMultiplaId ? (
+              <a
+                href="/dashboard/minhas-entradas"
+                className={`text-xs font-semibold underline underline-offset-4 ${textSecondary}`}
+              >
+                Ver todas
+              </a>
+            ) : null}
+          </div>
+
+          {(highlightMultiplaId
+            ? multiplas.filter((m) => m.id === highlightMultiplaId)
+            : multiplas
+          )
+            .slice(0, highlightMultiplaId ? 1 : 10)
+            .map((m) => {
+              const items = multiplasItens[m.id] || [];
+              const highlighted = highlightMultiplaId === m.id;
+              return (
+                <div
+                  key={m.id}
+                  className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-sm ${
+                    highlighted ? (theme === "dark" ? "ring-2 ring-green-500/40" : "ring-2 ring-green-500/30") : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                      <div className={`text-xs ${textTertiary} mb-1`}>
+                        {formatDate(m.created_at)}
+                        {m.data_aposta ? ` • Data: ${formatDateOnly(m.data_aposta)}` : ""}
+                      </div>
+                      <div className={`text-sm font-semibold ${textPrimary}`}>
+                        Múltipla • {items.length} seleções • Odd {Number(m.odd_combinada || 0).toFixed(2)}
+                      </div>
+                      <div className={`text-xs ${textSecondary} mt-1`}>
+                        Unidades: {Number(m.unidades || 0).toLocaleString("pt-BR")} • Valor: R${" "}
+                        {Number(m.valor_apostado || 0).toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                        {m.casa ? ` • Casa: ${m.casa}` : ""}
+                        {m.tipster ? ` • Tipster: ${m.tipster}` : ""}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingMultiplaId(m.id);
+                          setEditMultiplaResultado(m.resultado);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-medium cursor-pointer transition-colors ${
+                          theme === "dark"
+                            ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                        }`}
+                      >
+                        Resultado
+                      </button>
+                    </div>
+                  </div>
+
+                  {editingMultiplaId === m.id ? (
+                    <div className={`rounded-xl border ${cardBorder} ${infoBg} p-4`}>
+                      <div className={`text-xs font-semibold ${textSecondary} mb-2`}>Atualizar resultado</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(["pendente", "green", "red"] as const).map((r) => (
+                          <label
+                            key={r}
+                            className={`flex items-center justify-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                              editMultiplaResultado === r
+                                ? r === "green"
+                                  ? "bg-green-600 border-green-600 hover:bg-green-700 text-white"
+                                  : r === "red"
+                                  ? "bg-red-600 border-red-600 hover:bg-red-700 text-white"
+                                  : "bg-zinc-600 border-zinc-600 hover:bg-zinc-700 text-white"
+                                : theme === "dark"
+                                ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800"
+                                : "bg-white border-zinc-300 hover:bg-zinc-50"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`multipla-${m.id}-resultado`}
+                              value={r}
+                              checked={editMultiplaResultado === r}
+                              onChange={(e) => setEditMultiplaResultado(e.target.value as any)}
+                              className="mr-2"
+                            />
+                            <span className={`text-sm font-semibold ${
+                              editMultiplaResultado === r ? "text-white" : textPrimary
+                            }`}>
+                              {r === "pendente" ? "Pendente" : r === "green" ? "Green" : "Red"}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => saveMultiplaResultado(m)}
+                          disabled={saving}
+                          className={`px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-60 ${
+                            theme === "dark" ? "bg-zinc-700 hover:bg-zinc-600" : "bg-zinc-900 hover:bg-zinc-800"
+                          }`}
+                        >
+                          {saving ? "Salvando..." : "Salvar"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingMultiplaId(null)}
+                          disabled={saving}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 ${
+                            theme === "dark"
+                              ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                              : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                          }`}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className={`text-xs ${textTertiary}`}>Resultado</div>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getResultadoColor(
+                            m.resultado
+                          )}`}
+                        >
+                          {getResultadoLabel(m.resultado)}
+                        </span>
+                      </div>
+
+                      {typeof m.valor_resultado === "number" ? (
+                        <div className="flex items-center justify-between">
+                          <div className={`text-xs ${textTertiary}`}>Valor Resultado</div>
+                          <div
+                            className={`text-sm font-semibold ${
+                              (m.valor_resultado || 0) >= 0 ? "text-green-600" : "text-red-600"
+                            }`}
+                          >
+                            {(m.valor_resultado || 0) >= 0 ? "+" : ""}R${" "}
+                            {(m.valor_resultado || 0).toLocaleString("pt-BR", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {items.length > 0 ? (
+                        <div className={`mt-3 rounded-xl border ${cardBorder} ${infoBg} p-4`}>
+                          <div className={`text-xs font-semibold ${textSecondary} mb-2`}>Seleções</div>
+                          <div className="space-y-2">
+                            {items.map((it) => (
+                              <div
+                                key={it.id}
+                                className="flex items-start justify-between gap-3"
+                              >
+                                <div className="min-w-0">
+                                  <div className={`text-sm font-medium ${textPrimary} truncate`}>
+                                    {it.evento}
+                                  </div>
+                                  <div className={`text-xs ${textSecondary}`}>
+                                    {it.esporte}
+                                    {it.mercado ? ` • ${it.mercado}` : ""}
+                                  </div>
+                                </div>
+                                <div className={`text-sm font-semibold ${textPrimary}`}>
+                                  {Number(it.odd || 0).toFixed(2)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+      )}
+
       {/* Lista de Entradas */}
       {entradas.length === 0 ? (
         <div className={`rounded-2xl border border-dashed ${cardBorder} ${cardBg} p-12 text-center`}>
           <div className={textTertiary + " mb-2"}>Nenhuma entrada registrada ainda</div>
           <div className={`text-sm ${textTertiary}`}>
-            Vá em "Registrar Entradas" para começar
+            Vá em &quot;Registrar Entradas&quot; para começar
           </div>
         </div>
       ) : entradasFiltradas.length === 0 ? (
         <div className={`rounded-2xl border border-dashed ${cardBorder} ${cardBg} p-12 text-center`}>
           <div className={textTertiary + " mb-2"}>Nenhuma entrada encontrada no período selecionado</div>
           <div className={`text-sm ${textTertiary}`}>
-            Tente selecionar outro período ou "Todos"
+            Tente selecionar outro período ou &quot;Todos&quot;
           </div>
         </div>
       ) : (
@@ -593,7 +907,7 @@ export default function MinhasEntradasPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
-                        Stake (%)
+                        Unidade (un)
                       </label>
                       <input
                         type="text"
@@ -807,9 +1121,9 @@ export default function MinhasEntradasPage() {
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     <div>
-                      <div className={`text-xs ${textTertiary} mb-1`}>Stake</div>
+                      <div className={`text-xs ${textTertiary} mb-1`}>Unidade</div>
                       <div className={`text-sm font-medium ${textPrimary}`}>
-                        {entrada.stake_percent}%
+                        {entrada.stake_percent} un
                       </div>
                     </div>
                     <div>

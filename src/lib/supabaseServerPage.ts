@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { createServerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies, headers } from "next/headers";
 

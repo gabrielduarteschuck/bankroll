@@ -42,7 +42,9 @@ export default function FeedbackWidget() {
 
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(null);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuccess(null);
     }
   }, [open]);
@@ -90,8 +92,9 @@ export default function FeedbackWidget() {
       setText("");
       setSending(false);
       setTimeout(() => setOpen(false), 800);
-    } catch (err: any) {
-      setError(err?.message || "Erro ao enviar feedback.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || "Erro ao enviar feedback.");
       setSending(false);
     }
   }

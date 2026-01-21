@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -353,11 +355,11 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_left,_rgba(59,130,246,0.10),_transparent_55%)]" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-10">
+      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-6 sm:py-8">
         <div className="w-full max-w-2xl">
-          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-10">
+          <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-8">
             {/* header */}
-            <div className="flex flex-col items-center gap-4 text-center">
+            <div className="flex flex-col items-center gap-2 text-center sm:gap-3">
               <div className="relative -mt-2 w-full max-w-2xl h-56 sm:h-[22rem]">
                 <img
                   src="/imagens/logo%20prostake%20fundo%20transparemte.png"

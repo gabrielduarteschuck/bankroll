@@ -48,6 +48,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     // Fecha o menu mobile quando a rota muda
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileMenuOpen(false);
   }, [pathname]);
 
@@ -129,7 +130,8 @@ export default function DashboardLayout({
 
           <nav className="space-y-1 flex-1">
             <NavItem href="/dashboard" label="Painel" />
-            <NavItem href="/dashboard/registrar-entradas" label="Registrar Entradas" />
+            <NavItem href="/dashboard/sugestoes-ia" label="Sugestões da IA" />
+            <NavItem href="/dashboard/registrar-entradas/tipo" label="Registrar Entradas" />
             <NavItem href="/dashboard/minhas-entradas" label="Minhas Entradas" />
             <NavItem href="/dashboard/banca" label="Banca" />
             <NavItem href="/dashboard/relatorios" label="Relatórios" />
@@ -175,7 +177,8 @@ export default function DashboardLayout({
 
           <nav className="space-y-1">
             <NavItem href="/dashboard" label="Painel" />
-            <NavItem href="/dashboard/registrar-entradas" label="Registrar Entradas" />
+            <NavItem href="/dashboard/sugestoes-ia" label="Sugestões da IA" />
+            <NavItem href="/dashboard/registrar-entradas/tipo" label="Registrar Entradas" />
             <NavItem href="/dashboard/minhas-entradas" label="Minhas Entradas" />
             <NavItem href="/dashboard/banca" label="Banca" />
             <NavItem href="/dashboard/relatorios" label="Relatórios" />
