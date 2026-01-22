@@ -59,16 +59,50 @@ export default function ResetPasswordPage() {
           return;
         }
 
+        async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+          return await Promise.race([
+            p,
+            new Promise<T>((_, reject) =>
+              setTimeout(() => reject(new Error("timeout")), ms)
+            ),
+          ]);
+        }
+
         // 0) Fluxo verifyOtp (quando o template manda token_hash/token)
         if (tokenHash) {
-          const { error: vErr } = await supabase.auth.verifyOtp({
-            type: "recovery",
-            token_hash: tokenHash,
-          } as any);
-          if (vErr) {
-            setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
-            setReady(false);
-            return;
+          try {
+            const { error: vErr } = await withTimeout(
+              supabase.auth.verifyOtp({
+                type: "recovery",
+                token_hash: tokenHash,
+              } as any),
+              8000
+            );
+            if (vErr) {
+              // fallback: se já houver sessão, seguimos
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+              if (!session?.user) {
+                setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
+                setReady(false);
+                return;
+              }
+            }
+          } catch (e) {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            if (!session?.user) {
+              const msg = e instanceof Error ? e.message : String(e);
+              setError(
+                msg === "timeout"
+                  ? "Demorou para validar o link. Tente abrir o link novamente."
+                  : "Link inválido ou expirado. Solicite novamente a recuperação de senha."
+              );
+              setReady(false);
+              return;
+            }
           }
           try {
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -78,11 +112,32 @@ export default function ResetPasswordPage() {
         } else
         // 1) Fluxo PKCE (recomendado): troca code por sessão
         if (code) {
-          const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
-          if (exErr) {
-            setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
-            setReady(false);
-            return;
+          try {
+            const { error: exErr } = await withTimeout(supabase.auth.exchangeCodeForSession(code), 8000);
+            if (exErr) {
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+              if (!session?.user) {
+                setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
+                setReady(false);
+                return;
+              }
+            }
+          } catch (e) {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            if (!session?.user) {
+              const msg = e instanceof Error ? e.message : String(e);
+              setError(
+                msg === "timeout"
+                  ? "Demorou para validar o link. Tente abrir o link novamente."
+                  : "Link inválido ou expirado. Solicite novamente a recuperação de senha."
+              );
+              setReady(false);
+              return;
+            }
           }
 
           // limpa query/hash
@@ -105,14 +160,38 @@ export default function ResetPasswordPage() {
             return;
           }
 
-          const { error: setErr } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (setErr) {
-            setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
-            setReady(false);
-            return;
+          try {
+            const { error: setErr } = await withTimeout(
+              supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              }),
+              8000
+            );
+            if (setErr) {
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+              if (!session?.user) {
+                setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
+                setReady(false);
+                return;
+              }
+            }
+          } catch (e) {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            if (!session?.user) {
+              const msg = e instanceof Error ? e.message : String(e);
+              setError(
+                msg === "timeout"
+                  ? "Demorou para validar o link. Tente abrir o link novamente."
+                  : "Link inválido ou expirado. Solicite novamente a recuperação de senha."
+              );
+              setReady(false);
+              return;
+            }
           }
 
           // remove tokens da URL
@@ -121,6 +200,16 @@ export default function ResetPasswordPage() {
           } catch {
             // noop
           }
+        }
+
+        // Confere sessão antes de liberar form
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.user) {
+          setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
+          setReady(false);
+          return;
         }
 
         if (!cancelled) setReady(true);
