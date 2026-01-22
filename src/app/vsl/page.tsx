@@ -6,51 +6,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
 
-type VideoConfig =
-  | { type: "youtube"; url: string }
-  | { type: "vimeo"; url: string }
-  | { type: "mp4"; url: string };
-
-const VIDEO: VideoConfig = {
-  // Troque facilmente:
-  // - youtube: "https://www.youtube.com/watch?v=XXXX" ou "https://youtu.be/XXXX"
-  // - vimeo: "https://vimeo.com/XXXX"
-  // - mp4: URL direta do arquivo .mp4
-  type: "youtube",
-  url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-};
-
-function toYoutubeEmbed(url: string): string | null {
-  try {
-    const u = new URL(url);
-    if (u.hostname === "youtu.be") {
-      const id = u.pathname.replace("/", "").trim();
-      if (!id) return null;
-      return `https://www.youtube.com/embed/${encodeURIComponent(id)}`;
-    }
-    if (u.hostname.includes("youtube.com")) {
-      const id = u.searchParams.get("v") || "";
-      if (!id.trim()) return null;
-      return `https://www.youtube.com/embed/${encodeURIComponent(id.trim())}`;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function toVimeoEmbed(url: string): string | null {
-  try {
-    const u = new URL(url);
-    if (!u.hostname.includes("vimeo.com")) return null;
-    const id = u.pathname.split("/").filter(Boolean)[0];
-    if (!id) return null;
-    return `https://player.vimeo.com/video/${encodeURIComponent(id)}`;
-  } catch {
-    return null;
-  }
-}
-
 export default function VslPage() {
   const router = useRouter();
   const { theme } = useTheme();
@@ -104,49 +59,6 @@ export default function VslPage() {
   const border = theme === "dark" ? "border-zinc-800" : "border-zinc-200";
   const card = theme === "dark" ? "bg-zinc-900/40" : "bg-zinc-50";
 
-  const videoNode = useMemo(() => {
-    if (VIDEO.type === "youtube") {
-      const embed = toYoutubeEmbed(VIDEO.url);
-      return embed ? (
-        <iframe
-          src={embed}
-          title="Vídeo ProStake"
-          className="absolute inset-0 h-full w-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
-      ) : (
-        <div className={`absolute inset-0 flex items-center justify-center text-sm ${muted}`}>
-          URL do YouTube inválida
-        </div>
-      );
-    }
-    if (VIDEO.type === "vimeo") {
-      const embed = toVimeoEmbed(VIDEO.url);
-      return embed ? (
-        <iframe
-          src={embed}
-          title="Vídeo ProStake"
-          className="absolute inset-0 h-full w-full"
-          allow="autoplay; fullscreen; picture-in-picture"
-          allowFullScreen
-        />
-      ) : (
-        <div className={`absolute inset-0 flex items-center justify-center text-sm ${muted}`}>
-          URL do Vimeo inválida
-        </div>
-      );
-    }
-    return (
-      <video
-        className="absolute inset-0 h-full w-full"
-        src={VIDEO.url}
-        controls
-        playsInline
-      />
-    );
-  }, [muted]);
-
   return (
     <div className={`min-h-screen ${bg}`}>
       <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
@@ -187,8 +99,8 @@ export default function VslPage() {
         </header>
 
         {/* Hero */}
-        <section className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
-          <div className="space-y-5">
+        <section className="mt-10 grid grid-cols-1 gap-8 lg:gap-10">
+          <div className="space-y-5 max-w-2xl">
             <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
               Controle sua banca e evolua com métricas claras.
             </h1>
@@ -229,20 +141,6 @@ export default function VslPage() {
                   <div className={`mt-1 text-xs ${muted}`}>Relatórios objetivos e práticos.</div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Vídeo */}
-          <div className="lg:pt-2">
-            <div
-              className={`relative overflow-hidden rounded-3xl border shadow-xl ${border} ${
-                theme === "dark" ? "bg-zinc-900/60 shadow-black/30" : "bg-white shadow-zinc-200/80"
-              }`}
-            >
-              <div className="relative w-full pt-[56.25%]">{videoNode}</div>
-            </div>
-            <div className={`mt-3 text-xs ${muted}`}>
-              Dica: troque o link do vídeo em `src/app/vsl/page.tsx` (constante `VIDEO`).
             </div>
           </div>
         </section>
