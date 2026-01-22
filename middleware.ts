@@ -96,14 +96,9 @@ export async function middleware(req: NextRequest) {
   }
 
   // 3) Se já estiver logado e tentar acessar / → manda pro /dashboard
-  // Se não estiver logado e tentar acessar / → manda pro /login
+  // Agora: "/" é público (VSL). Só tratamos recovery.
   if (pathname === "/") {
-    if (req.nextUrl.searchParams.get("type") === "recovery") {
-      return res;
-    }
-    const url = req.nextUrl.clone();
-    url.pathname = isLoggedIn ? "/dashboard" : "/login";
-    return NextResponse.redirect(url);
+    return res;
   }
 
   return res;

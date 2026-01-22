@@ -65,14 +65,21 @@ export async function POST(req: Request) {
     });
 
     async function upsertByEmail(email: string, patch: Record<string, any>) {
-      await admin.from("stripe_payments").upsert(
-        {
-          email,
-          updated_at: new Date().toISOString(),
-          ...patch,
-        },
-        { onConflict: "email" }
-      );
+      // Evita depender de UNIQUE(email) (muitos setups usam índice em lower(email)).
+      // Estratégia: tenta UPDATE por email; se não existir, faz INSERT.
+      const updateRes = await admin
+        .from("stripe_payments")
+        .update({ updated_at: new Date().toISOString(), ...patch })
+        .eq("email", email)
+        .select("id");
+
+      if (updateRes.error) throw updateRes.error;
+      if (Array.isArray(updateRes.data) && updateRes.data.length > 0) return;
+
+      const insertRes = await admin
+        .from("stripe_payments")
+        .insert({ email, updated_at: new Date().toISOString(), ...patch });
+      if (insertRes.error) throw insertRes.error;
     }
 
     if (event.type === "checkout.session.completed") {
@@ -96,17 +103,20 @@ export async function POST(req: Request) {
       const invoice = event.data.object as Stripe.Invoice;
       const email = pickInvoiceEmail(invoice) || (await resolveCustomerEmail(stripe, invoice.customer));
       if (email) {
-        const isPaid = event.type === "invoice.paid";
-        const paidAt = isPaid ? new Date().toISOString() : null;
-        await upsertByEmail(email, {
+        const isPaidEvent = event.type === "invoice.paid";
+        const patch: Record<string, any> = {
           stripe_customer_id: typeof invoice.customer === "string" ? invoice.customer : null,
-          payment_status: isPaid ? "paid" : "payment_failed",
-          is_paid: isPaid,
-          paid_at: paidAt,
+          payment_status: isPaidEvent ? "paid" : "payment_failed",
           last_invoice_id: invoice.id,
           subscription_id:
             typeof (invoice as any)?.subscription === "string" ? (invoice as any).subscription : null,
-        });
+        };
+
+        // Importante: NÃO derrubar acesso apenas por invoice.payment_failed.
+        // O acesso é decidido por checkout/subscription status.
+        if (isPaidEvent) patch.paid_at = new Date().toISOString();
+
+        await upsertByEmail(email, patch);
       }
     }
 
