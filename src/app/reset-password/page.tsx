@@ -6,7 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-function parseUrlParams(): { type: string | null; accessToken: string | null; refreshToken: string | null } {
+function parseUrlParams(): {
+  type: string | null;
+  code: string | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+} {
   // Alguns provedores mandam no query (?access_token=...),
   // outros no hash (#access_token=...&refresh_token=...).
   const search = new URLSearchParams(window.location.search);
@@ -14,10 +19,11 @@ function parseUrlParams(): { type: string | null; accessToken: string | null; re
   const hash = new URLSearchParams(hashRaw);
 
   const type = search.get("type") || hash.get("type");
+  const code = search.get("code");
   const accessToken = search.get("access_token") || hash.get("access_token");
   const refreshToken = search.get("refresh_token") || hash.get("refresh_token");
 
-  return { type, accessToken, refreshToken };
+  return { type, code, accessToken, refreshToken };
 }
 
 export default function ResetPasswordPage() {
@@ -38,43 +44,62 @@ export default function ResetPasswordPage() {
       setLoading(true);
       setError(null);
       try {
-        const { type, accessToken, refreshToken } = parseUrlParams();
+        const { type, code, accessToken, refreshToken } = parseUrlParams();
 
-        // Requisito: só permitir quando vier do fluxo de recovery
-        if (type !== "recovery") {
+        // Permitir APENAS contexto de recovery:
+        // - links antigos: type=recovery + access_token/refresh_token (query/hash)
+        // - links novos (PKCE): ?code=...
+        const isRecoveryContext = type === "recovery" || !!code || (!!accessToken && !!refreshToken);
+        if (!isRecoveryContext) {
           router.replace("/login");
           return;
         }
 
-        // Requisito do usuário: ler tokens via query.
-        // Na prática, o Supabase quase sempre precisa do refresh_token também para setSession.
-        if (!accessToken) {
-          setError("Link inválido ou incompleto. Solicite novamente a recuperação de senha.");
-          setReady(false);
-          return;
-        }
+        // 1) Fluxo PKCE (recomendado): troca code por sessão
+        if (code) {
+          const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
+          if (exErr) {
+            setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
+            setReady(false);
+            return;
+          }
 
-        if (!refreshToken) {
-          setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
-          setReady(false);
-          return;
-        }
+          // limpa query/hash
+          try {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } catch {
+            // noop
+          }
+        } else {
+          // 2) Fluxo tokens (query/hash): precisa de access_token + refresh_token
+          if (!accessToken) {
+            setError("Link inválido ou incompleto. Solicite novamente a recuperação de senha.");
+            setReady(false);
+            return;
+          }
 
-        const { error: setErr } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (setErr) {
-          setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
-          setReady(false);
-          return;
-        }
+          if (!refreshToken) {
+            setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
+            setReady(false);
+            return;
+          }
 
-        // remove tokens da URL
-        try {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } catch {
-          // noop
+          const { error: setErr } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (setErr) {
+            setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
+            setReady(false);
+            return;
+          }
+
+          // remove tokens da URL
+          try {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } catch {
+            // noop
+          }
         }
 
         if (!cancelled) setReady(true);
