@@ -108,10 +108,14 @@ export default function LoginPage() {
         return;
       }
 
-      const appUrl = String(process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
-      const redirectTo = appUrl
-        ? `${appUrl}/reset-password`
-        : `${window.location.origin}/reset-password`;
+      const defaultAppUrl =
+        process.env.NODE_ENV === "production"
+          ? "https://prostake.app"
+          : "http://localhost:3000";
+      const appUrl = String(process.env.NEXT_PUBLIC_APP_URL || defaultAppUrl)
+        .trim()
+        .replace(/\/$/, "");
+      const redirectTo = `${appUrl}/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo,
       });
