@@ -98,6 +98,7 @@ export default function AdminLayout({
             </Link>
 
             <NavItem href="/admin/entradas-publicadas" label="Entradas publicadas" />
+            <NavItem href="/admin/relatorios" label="Relatórios" />
           </nav>
 
           <div className="mt-4">

@@ -53,7 +53,7 @@ export default function UserMenu() {
   }
 
   return (
-    <div className={`mt-auto rounded-xl border p-4 ${
+    <div className={`mt-auto min-w-0 rounded-xl border p-4 ${
       theme === "dark"
         ? "border-zinc-800 bg-zinc-900"
         : "border-zinc-200 bg-white"
@@ -64,10 +64,15 @@ export default function UserMenu() {
         }`}>
           Usuário
         </div>
-        <div className={`mt-1 text-sm font-semibold ${
+        <div className={`mt-1 min-w-0 text-sm font-semibold ${
           theme === "dark" ? "text-white" : "text-zinc-900"
         }`}>
-          {user.email}
+          <span
+            className="block max-w-full truncate"
+            title={user.email ?? ""}
+          >
+            {user.email}
+          </span>
         </div>
       </div>
       <button

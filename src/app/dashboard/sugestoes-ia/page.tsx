@@ -304,9 +304,22 @@ export default function SugestoesIAPage() {
                     <button
                       type="button"
                       disabled={!hasLink}
-                      onClick={() => {
+                      onClick={async () => {
                         if (!hasLink) return;
-                        window.open(String(s.link_bilhete_final), "_blank", "noopener,noreferrer");
+                        const url = String(s.link_bilhete_final);
+                        try {
+                          const {
+                            data: { user },
+                          } = await supabase.auth.getUser();
+                          await supabase.from("ai_suggestion_clicks").insert({
+                            suggestion_id: s.id,
+                            user_id: user?.id ?? null,
+                          });
+                        } catch {
+                          // tracking best-effort (não bloquear CTA)
+                        } finally {
+                          window.open(url, "_blank", "noopener,noreferrer");
+                        }
                       }}
                       className={`h-11 px-4 rounded-xl font-semibold cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
                         theme === "dark"

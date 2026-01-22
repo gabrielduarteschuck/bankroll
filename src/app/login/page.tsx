@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [phoneDigits, setPhoneDigits] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -76,6 +77,41 @@ export default function LoginPage() {
       router.refresh();
     } catch (err: any) {
       setError("Erro de conexão. Verifique sua internet e tente novamente.");
+      setLoading(false);
+    }
+  }
+
+  async function handleForgotPassword(e?: React.FormEvent) {
+    e?.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      if (!email.trim()) {
+        setError("Informe seu email.");
+        setLoading(false);
+        return;
+      }
+
+      const redirectTo = `${window.location.origin}/reset-senha`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo,
+      });
+
+      // Evita enumeração de usuário: mensagem genérica
+      if (error) {
+        console.log("resetPasswordForEmail error:", error);
+      }
+
+      setSuccess(
+        "Se este email estiver cadastrado, enviaremos um link para redefinir sua senha."
+      );
+    } catch {
+      setSuccess(
+        "Se este email estiver cadastrado, enviaremos um link para redefinir sua senha."
+      );
+    } finally {
       setLoading(false);
     }
   }
@@ -380,6 +416,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => {
                           setIsSignUp(false);
+                          setIsForgotPassword(false);
                           setError(null);
                           setSuccess(null);
                           setFullName("");
@@ -399,6 +436,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => {
                           setIsSignUp(true);
+                          setIsForgotPassword(false);
                           setError(null);
                           setSuccess(null);
                           setFullName("");
@@ -414,7 +452,12 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="mt-8 space-y-6">
+            <form
+              onSubmit={
+                isForgotPassword ? handleForgotPassword : isSignUp ? handleSignUp : handleLogin
+              }
+              className="mt-8 space-y-6"
+            >
               {isSignUp && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-600">Nome</label>
@@ -445,33 +488,52 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-600">Senha</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    autoComplete={isSignUp ? "new-password" : "current-password"}
-                    placeholder="********"
-                    className="w-full rounded-2xl border border-zinc-300 bg-white px-5 py-4 pr-12 text-zinc-900 placeholder-zinc-400 shadow-inner outline-none transition focus:border-zinc-400"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 cursor-pointer"
-                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                  >
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-                      <path
-                        fill="currentColor"
-                        d="M12 5c-5.5 0-9.6 4.2-10.8 6 .9 1.3 4.9 8 10.8 8 5.9 0 9.9-6.7 10.8-8C21.6 9.2 17.5 5 12 5Zm0 12c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
-                      />
-                    </svg>
-                  </button>
+              {!isForgotPassword && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-600">Senha</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      autoComplete={isSignUp ? "new-password" : "current-password"}
+                      placeholder="********"
+                      className="w-full rounded-2xl border border-zinc-300 bg-white px-5 py-4 pr-12 text-zinc-900 placeholder-zinc-400 shadow-inner outline-none transition focus:border-zinc-400"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 cursor-pointer"
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    >
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                        <path
+                          fill="currentColor"
+                          d="M12 5c-5.5 0-9.6 4.2-10.8 6 .9 1.3 4.9 8 10.8 8 5.9 0 9.9-6.7 10.8-8C21.6 9.2 17.5 5 12 5Zm0 12c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {!isSignUp && (
+                    <div className="flex items-center justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsForgotPassword(true);
+                          setError(null);
+                          setSuccess(null);
+                          setPassword("");
+                        }}
+                        className="cursor-pointer text-sm font-semibold text-zinc-900 underline underline-offset-4 hover:text-zinc-700"
+                      >
+                        Esqueci minha senha
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
 
               {isSignUp && (
                 <div className="space-y-6">
@@ -529,6 +591,27 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {isForgotPassword && (
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+                  <p className="text-sm text-zinc-700">
+                    Informe seu email e enviaremos um link para redefinir sua senha.
+                  </p>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsForgotPassword(false);
+                        setError(null);
+                        setSuccess(null);
+                      }}
+                      className="cursor-pointer text-sm font-semibold text-zinc-900 underline underline-offset-4 hover:text-zinc-700"
+                    >
+                      Voltar para o login
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {success && (
                 <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3">
                   <p className="text-sm text-green-800">{success}</p>
@@ -547,12 +630,16 @@ export default function LoginPage() {
                 className="w-full rounded-2xl bg-zinc-900 px-6 py-4 text-base font-semibold text-white shadow-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading
-                  ? isSignUp
-                    ? "Criando conta..."
-                    : "Entrando..."
-                  : isSignUp
-                    ? "Criar Conta"
-                    : "Entrar"}
+                  ? isForgotPassword
+                    ? "Enviando..."
+                    : isSignUp
+                      ? "Criando conta..."
+                      : "Entrando..."
+                  : isForgotPassword
+                    ? "Enviar link de redefinição"
+                    : isSignUp
+                      ? "Criar Conta"
+                      : "Entrar"}
               </button>
 
               <p className="pt-2 text-center text-sm text-zinc-500">

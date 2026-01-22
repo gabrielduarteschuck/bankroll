@@ -19,6 +19,10 @@ export default function AjustesPage() {
   const [phoneDigits, setPhoneDigits] = useState("");
   const [savingUser, setSavingUser] = useState(false);
 
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+
   // Classes de tema
   const textPrimary = theme === "dark" ? "text-white" : "text-zinc-900";
   const textSecondary = theme === "dark" ? "text-zinc-400" : "text-zinc-600";
@@ -232,6 +236,38 @@ export default function AjustesPage() {
     }
   }
 
+  async function handleChangePassword() {
+    if (savingPassword) return;
+    const p1 = newPassword.trim();
+    const p2 = confirmNewPassword.trim();
+    if (!p1) {
+      alert("Informe a nova senha.");
+      return;
+    }
+    if (p1.length < 6) {
+      alert("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (p1 !== p2) {
+      alert("As senhas não coincidem.");
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: p1 });
+      if (error) {
+        alert("Erro ao alterar senha. Tente novamente.");
+        return;
+      }
+      setNewPassword("");
+      setConfirmNewPassword("");
+      alert("✅ Senha alterada com sucesso!");
+    } finally {
+      setSavingPassword(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -299,6 +335,55 @@ export default function AjustesPage() {
             </div>
           </div>
         )}
+      </div>
+
+      <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-sm`}>
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className={`text-lg font-semibold ${textPrimary}`}>Segurança</h2>
+            <p className={`mt-1 text-sm ${textSecondary}`}>
+              Altere sua senha de acesso.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleChangePassword}
+            disabled={savingPassword}
+            className={`px-5 py-2.5 rounded-lg font-semibold cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+              theme === "dark"
+                ? "bg-zinc-700 text-white hover:bg-zinc-600"
+                : "bg-zinc-900 text-white hover:bg-zinc-800"
+            }`}
+          >
+            {savingPassword ? "Salvando..." : "Salvar nova senha"}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Nova senha</label>
+            <input
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              type="password"
+              autoComplete="new-password"
+              placeholder="********"
+              className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
+            />
+            <div className={`mt-2 text-xs ${textTertiary}`}>Mínimo de 6 caracteres.</div>
+          </div>
+          <div>
+            <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Confirmar nova senha</label>
+            <input
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              type="password"
+              autoComplete="new-password"
+              placeholder="********"
+              className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
+            />
+          </div>
+        </div>
       </div>
 
       <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-sm`}>
