@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabaseClient";
 function parseUrlParams(): {
   type: string | null;
   code: string | null;
+  tokenHash: string | null;
   accessToken: string | null;
   refreshToken: string | null;
 } {
@@ -20,10 +21,11 @@ function parseUrlParams(): {
 
   const type = search.get("type") || hash.get("type");
   const code = search.get("code");
+  const tokenHash = search.get("token_hash") || search.get("token") || null;
   const accessToken = search.get("access_token") || hash.get("access_token");
   const refreshToken = search.get("refresh_token") || hash.get("refresh_token");
 
-  return { type, code, accessToken, refreshToken };
+  return { type, code, tokenHash, accessToken, refreshToken };
 }
 
 export default function ResetPasswordPage() {
@@ -44,17 +46,36 @@ export default function ResetPasswordPage() {
       setLoading(true);
       setError(null);
       try {
-        const { type, code, accessToken, refreshToken } = parseUrlParams();
+        const { type, code, tokenHash, accessToken, refreshToken } = parseUrlParams();
 
         // Permitir APENAS contexto de recovery:
         // - links antigos: type=recovery + access_token/refresh_token (query/hash)
         // - links novos (PKCE): ?code=...
-        const isRecoveryContext = type === "recovery" || !!code || (!!accessToken && !!refreshToken);
+        // - templates custom: ?token_hash=...&type=recovery
+        const isRecoveryContext =
+          type === "recovery" || !!code || !!tokenHash || (!!accessToken && !!refreshToken);
         if (!isRecoveryContext) {
           router.replace("/login");
           return;
         }
 
+        // 0) Fluxo verifyOtp (quando o template manda token_hash/token)
+        if (tokenHash) {
+          const { error: vErr } = await supabase.auth.verifyOtp({
+            type: "recovery",
+            token_hash: tokenHash,
+          } as any);
+          if (vErr) {
+            setError("Link inválido ou expirado. Solicite novamente a recuperação de senha.");
+            setReady(false);
+            return;
+          }
+          try {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } catch {
+            // noop
+          }
+        } else
         // 1) Fluxo PKCE (recomendado): troca code por sessão
         if (code) {
           const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
