@@ -142,7 +142,7 @@ export default function PosPagamentoPage() {
 
             {status === "checking" && (
               <div className={`text-xs ${ui.muted}`}>
-                Dica: se você acabou de pagar, pode levar alguns segundos até o webhook atualizar seu acesso.
+                Dica: se você acabou de pagar, pode levar alguns segundos até o sistema atualizar seu acesso.
               </div>
             )}
           </div>
