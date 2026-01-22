@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -21,6 +21,20 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
+
+  // Mensagem pós-reset: /login?reset=1 (sem useSearchParams)
+  useEffect(() => {
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      if (qs.get("reset") === "1") {
+        setSuccess("Senha alterada com sucesso! Faça login novamente.");
+        // limpa o query param
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch {
+      // noop
+    }
+  }, []);
 
   function formatBRPhone(digits: string): string {
     const d = digits.replace(/\D/g, "").slice(0, 11); // trava em 11
@@ -94,7 +108,10 @@ export default function LoginPage() {
         return;
       }
 
-      const redirectTo = `${window.location.origin}/reset-senha`;
+      const appUrl = String(process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
+      const redirectTo = appUrl
+        ? `${appUrl}/reset-password`
+        : `${window.location.origin}/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo,
       });

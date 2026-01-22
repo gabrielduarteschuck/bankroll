@@ -21,6 +21,11 @@ export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const res = NextResponse.next();
 
+  // Permite a página de recovery mesmo com sessão ativa (não aplicar redirects aqui)
+  if (pathname === "/reset-password") {
+    return res;
+  }
+
   // Cria cliente Supabase para validar sessão real
   const supabase = createSupabaseMiddlewareClient(req, res);
 
@@ -30,6 +35,14 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isLoggedIn = !!user;
+
+  // 0) Se o Supabase cair no "/" durante recovery (type=recovery na query),
+  // redireciona para /reset-password preservando a query.
+  if (pathname === "/" && req.nextUrl.searchParams.get("type") === "recovery") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/reset-password";
+    return NextResponse.redirect(url);
+  }
 
   // 1) Protege /dashboard: sem login → redireciona para /login
   if (pathname.startsWith("/dashboard") && !isLoggedIn) {
@@ -62,6 +75,9 @@ export async function middleware(req: NextRequest) {
   // 3) Se já estiver logado e tentar acessar / → manda pro /dashboard
   // Se não estiver logado e tentar acessar / → manda pro /login
   if (pathname === "/") {
+    if (req.nextUrl.searchParams.get("type") === "recovery") {
+      return res;
+    }
     const url = req.nextUrl.clone();
     url.pathname = isLoggedIn ? "/dashboard" : "/login";
     return NextResponse.redirect(url);
@@ -71,5 +87,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/reset-password", "/"],
 };
