@@ -22,17 +22,55 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
-  // Mensagem pós-reset: /login?reset=1 (sem useSearchParams)
+  // Mensagens via query params (Supabase /login?error=... e /login?reset=1)
   useEffect(() => {
-    try {
-      const qs = new URLSearchParams(window.location.search);
-      if (qs.get("reset") === "1") {
-        setSuccess("Senha alterada com sucesso! Faça login novamente.");
-        // limpa o query param
-        window.history.replaceState({}, document.title, window.location.pathname);
+    function safeDecode(v: string): string {
+      try {
+        return decodeURIComponent(v.replace(/\+/g, " "));
+      } catch {
+        // Se vier % malformado (URIError), mantém o valor cru
+        return v;
       }
-    } catch {
-      // noop
+    }
+
+    function parseQueryRaw(search: string): Record<string, string> {
+      const out: Record<string, string> = {};
+      const s = String(search || "").replace(/^\?/, "");
+      if (!s) return out;
+      for (const part of s.split("&")) {
+        if (!part) continue;
+        const idx = part.indexOf("=");
+        const k = idx >= 0 ? part.slice(0, idx) : part;
+        const v = idx >= 0 ? part.slice(idx + 1) : "";
+        const key = safeDecode(k);
+        if (!key) continue;
+        out[key] = safeDecode(v);
+      }
+      return out;
+    }
+
+    const qs = parseQueryRaw(window.location.search);
+
+    // 1) Pós-reset de senha
+    if (qs.reset === "1") {
+      setSuccess("Senha alterada com sucesso! Faça login novamente.");
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch {
+        // noop
+      }
+      return;
+    }
+
+    // 2) Erros do Supabase (ex: otp_expired)
+    if (qs.error === "access_denied" || qs.error_code === "otp_expired") {
+      setError("Link expirado, solicite novamente.");
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch {
+        // noop
+      }
+      return;
     }
   }, []);
 
