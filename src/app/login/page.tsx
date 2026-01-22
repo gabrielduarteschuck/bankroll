@@ -2,9 +2,11 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+
+const STRIPE_CHECKOUT_URL = "https://buy.stripe.com/9B6aEW637aPiaWPd5AaMU00";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -21,6 +23,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
+
+  const checkoutUrl = useMemo(() => {
+    const envUrl = String(process.env.NEXT_PUBLIC_STRIPE_CHECKOUT_URL || "").trim();
+    return envUrl || STRIPE_CHECKOUT_URL;
+  }, []);
 
   // Mensagens via query params (Supabase /login?error=... e /login?reset=1)
   useEffect(() => {
@@ -124,6 +131,22 @@ export default function LoginPage() {
 
       // Aguarda um pouco para garantir que os cookies sejam salvos
       await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Checa pagamento (best-effort). Se não estiver pago, manda para o checkout.
+      try {
+        const { data: paid, error: paidErr } = await supabase.rpc("has_paid_access");
+        if (!paidErr && paid !== true) {
+          setSuccess("Para acessar, finalize o pagamento. Redirecionando...");
+          try {
+            window.location.assign(checkoutUrl);
+          } catch {
+            window.location.href = checkoutUrl;
+          }
+          return;
+        }
+      } catch {
+        // se RPC não existir ainda, mantém fluxo normal
+      }
 
       router.push("/dashboard");
       router.refresh();
@@ -249,57 +272,33 @@ export default function LoginPage() {
         return;
       }
 
-      // Cria a conta no Supabase
-      const redirectTo = `${window.location.origin}/dashboard`;
-
-      // DEBUG (temporário): variáveis de ambiente públicas
-      console.log("SUPABASE URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
-      console.log("SUPABASE KEY EXISTS", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-
-      // DEBUG (temporário): input do signup
       const phone = phoneE164OrNull();
-      console.log("SIGNUP INPUT", { email, password, phone, fullName });
+      clearTimeout(timeoutId);
 
-      console.log("🚀 Iniciando signup...", {
-        email,
-        phone,
-        redirectTo,
-      });
-      const startTime = Date.now();
-      
-      let signUpResult;
+      // Cria a conta no Supabase (sem fluxo de verificação de email)
+      let signUpResult: any;
       try {
-        console.log("📡 Chamando supabase.auth.signUp...");
         signUpResult = await Promise.race([
           supabase.auth.signUp({
             email,
             password,
             options: {
               data: {
-                // Importante: telefone NÃO vai como campo principal; apenas metadata.
                 ...(phone ? { phone, telefone: phone } : {}),
                 nome: fullName.trim(),
               },
-              emailRedirectTo: redirectTo,
             },
           }),
-          // Timeout de 8 segundos para a chamada do Supabase
-          new Promise((_, reject) => 
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error("Timeout: Supabase não respondeu em 8 segundos")), 8000)
-          )
-        ]) as any;
-        
-        const duration = Date.now() - startTime;
-        console.log(`✅ Signup completado em ${duration}ms`);
+          ),
+        ]);
       } catch (networkError: any) {
         clearTimeout(timeoutId);
-        const duration = Date.now() - startTime;
-        console.error(`❌ Erro de rede no signup após ${duration}ms:`, networkError);
         const rawMsg = String(networkError?.message || "");
         const isTimeout = rawMsg.toLowerCase().includes("timeout");
         const isFetchFail =
           rawMsg.toLowerCase().includes("failed") || rawMsg.toLowerCase().includes("fetch");
-
         setError(
           isTimeout
             ? "O Supabase demorou para responder. Tente novamente em alguns instantes."
@@ -311,119 +310,22 @@ export default function LoginPage() {
         return;
       }
 
-      const { data, error: signUpError } = signUpResult;
-
-      // Logs explícitos para debug em produção (browser console)
-      console.log("SIGNUP DATA", data);
-      console.log("SIGNUP ERROR", signUpError);
-
+      const { data, error: signUpError } = signUpResult as any;
       if (signUpError) {
         clearTimeout(timeoutId);
-        console.error("Erro no signup:", signUpError);
-
-        // Exibe a mensagem exatamente como vem do Supabase (sem tradução/normalização)
-        setError(signUpError.message || "Erro no signup (sem mensagem).");
+        setError(signUpError.message || "Erro ao criar conta.");
         setLoading(false);
         return;
       }
 
-      // Se o signup foi bem-sucedido (sem erro)
-      clearTimeout(timeoutId);
-      
-      // Se temos usuário e sessão, redireciona imediatamente
-      if (data?.user && data?.session) {
-        console.log("✅ Usuário criado com sessão ativa - redirecionando");
-        router.push("/dashboard");
-        router.refresh();
-        return;
+      // Conta criada -> manda direto para o checkout (sem depender de sessão/login)
+      setSuccess("Conta criada com sucesso! Redirecionando para o pagamento...");
+      try {
+        window.location.assign(checkoutUrl);
+      } catch {
+        window.location.href = checkoutUrl;
       }
-      
-      // Se temos usuário mas não temos sessão, tenta fazer login automaticamente
-      // (pode funcionar se email confirmation estiver desabilitado)
-      if (data?.user && !data?.session) {
-        console.log("✅ Usuário criado mas sem sessão - tentando fazer login automático");
-        try {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          
-          if (!signInError && signInData?.session) {
-            console.log("✅ Login automático bem-sucedido - redirecionando");
-            router.push("/dashboard");
-            router.refresh();
-            return;
-          }
-        } catch (loginErr: any) {
-          console.error("Erro ao tentar login automático:", loginErr);
-        }
-        
-        // Se login automático falhou, volta para tela de login
-        console.log("✅ Conta criada - voltando para tela de login");
-        setSuccess(
-          "Conta criada com sucesso! Enviamos um email de confirmação. Após confirmar, volte aqui e faça login."
-        );
-        setIsSignUp(false);
-        setFullName("");
-        setPassword("");
-        setConfirmPassword("");
-        setPhoneDigits("");
-        setError(null);
-        setLoading(false);
-        // Email já está preenchido, usuário só precisa digitar a senha
-        return;
-      }
-      
-      // Se não temos data.user mas também não temos erro, tenta fazer login
-      // (usuário foi criado, mas Supabase não retornou data.user)
-      if (!signUpError) {
-        console.log("✅ Signup bem-sucedido - tentando fazer login automático");
-        try {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          
-          if (!signInError && signInData?.session) {
-            console.log("✅ Login automático bem-sucedido - redirecionando");
-            router.push("/dashboard");
-            router.refresh();
-            return;
-          }
-        } catch (loginErr) {
-          console.error("Erro ao tentar login automático:", loginErr);
-        }
-        
-        // Se login automático falhou, volta para tela de login
-        console.log("✅ Conta criada - voltando para tela de login");
-      setSuccess(
-        "Conta criada com sucesso! Enviamos um email de confirmação. Após confirmar, volte aqui e faça login."
-      );
-        setIsSignUp(false);
-      setFullName("");
-        setPassword("");
-        setConfirmPassword("");
-      setPhoneDigits("");
-        setError(null);
-        setLoading(false);
-        // Email já está preenchido, usuário só precisa digitar a senha
-        return;
-      }
-      
-      // Fallback: se chegou aqui, algo inesperado aconteceu
-      console.warn("⚠️ Signup sem usuário retornado e sem erro claro");
-      console.warn("Dados completos:", { data, signUpError });
-      // Volta para tela de login mesmo assim
-      setSuccess(
-        "Conta criada. Se sua confirmação por email estiver ativa, verifique sua caixa de entrada e spam."
-      );
-      setIsSignUp(false);
-      setFullName("");
-      setPassword("");
-      setConfirmPassword("");
-      setPhoneDigits("");
-      setError(null);
-      setLoading(false);
+      return;
     } catch (err: any) {
       clearTimeout(timeoutId);
       console.error("❌ Erro inesperado no signup:", err);

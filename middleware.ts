@@ -36,6 +36,10 @@ export async function middleware(req: NextRequest) {
 
   const isLoggedIn = !!user;
 
+  const checkoutUrl =
+    process.env.NEXT_PUBLIC_STRIPE_CHECKOUT_URL ||
+    "https://buy.stripe.com/9B6aEW637aPiaWPd5AaMU00";
+
   // 0) Se o Supabase cair no "/" durante recovery (type=recovery na query),
   // redireciona para /reset-password preservando a query.
   if (pathname === "/" && req.nextUrl.searchParams.get("type") === "recovery") {
@@ -49,6 +53,25 @@ export async function middleware(req: NextRequest) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  // 1.1) Protege /dashboard: com login mas sem pagamento → manda pro checkout
+  if (pathname.startsWith("/dashboard") && isLoggedIn) {
+    // Admin sempre passa (mesma whitelist já usada no /admin)
+    const adminEmails = getAdminEmails();
+    const userEmail = user?.email?.toLowerCase();
+    const isAdminEmail = !!userEmail && adminEmails.includes(userEmail);
+
+    if (!isAdminEmail) {
+      try {
+        const { data: paid, error: paidErr } = await supabase.rpc("has_paid_access");
+        if (!paidErr && paid !== true) {
+          return NextResponse.redirect(new URL(checkoutUrl, req.nextUrl.origin));
+        }
+      } catch {
+        // se RPC não existir ainda, não bloqueia
+      }
+    }
   }
 
   // 2) Protege /admin: requer login + email na whitelist

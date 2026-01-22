@@ -694,19 +694,20 @@ export default function DashboardHome() {
       {/* Casas de Apostas Recomendadas */}
       <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-sm`}>
         <h2 className={`text-lg font-semibold ${textPrimary} mb-4`}>
-          Casas de Apostas Recomendadas
+          Casas Indicadas
         </h2>
         <div className="flex flex-wrap gap-3 mb-4">
           <a
             href="https://go.aff.esportiva.bet/s0gwocy0"
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl border font-semibold transition-colors cursor-pointer ${
               theme === "dark"
-                ? "bg-orange-600 hover:bg-orange-700"
-                : "bg-orange-600 hover:bg-orange-700"
+                ? "border-zinc-800 bg-zinc-800/80 text-zinc-100 hover:bg-zinc-800"
+                : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
             }`}
           >
+            <span className="h-2.5 w-2.5 rounded-full bg-orange-500" aria-hidden="true" />
             <span>Esportiva</span>
             <svg
               className="w-4 h-4"
@@ -727,12 +728,13 @@ export default function DashboardHome() {
             href="https://www.bet365.bet.br/hub/pt-br/open-account?affiliate=365_03711474"
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105 cursor-pointer ${
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl border font-semibold transition-colors cursor-pointer ${
               theme === "dark"
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-blue-600 hover:bg-blue-700"
+                ? "border-zinc-800 bg-zinc-800/80 text-zinc-100 hover:bg-zinc-800"
+                : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
             }`}
           >
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-500" aria-hidden="true" />
             <span>Bet365</span>
             <svg
               className="w-4 h-4"
@@ -757,7 +759,7 @@ export default function DashboardHome() {
       {/* Grupos de palpites indicados */}
       <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-sm`}>
         <h2 className={`text-lg font-semibold ${textPrimary} mb-2`}>
-          Grupos de palpites indicados
+          Salas Indicadas
         </h2>
         <p className={`text-xs ${textTertiary} mb-4`}>
           Entre nos grupos recomendados para receber palpites e análises (NBA e Futebol).
@@ -768,10 +770,10 @@ export default function DashboardHome() {
             href="https://t.me/+TTjhM_Pm_RlkN2Nh"
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-[1.02] cursor-pointer ${
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl border font-semibold transition-colors cursor-pointer ${
               theme === "dark"
-                ? "bg-sky-600 hover:bg-sky-700"
-                : "bg-sky-600 hover:bg-sky-700"
+                ? "border-zinc-800 bg-zinc-800/80 text-zinc-100 hover:bg-zinc-800"
+                : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
             }`}
           >
             <svg
@@ -782,20 +784,20 @@ export default function DashboardHome() {
             >
               <path d="M21.9 4.6c.2-1-0.7-1.7-1.6-1.3L2.6 10.3c-1 .4-.9 1.8.1 2.2l4.7 1.8 1.8 5.7c.3 1.1 1.7 1.2 2.2.3l2.8-4.9 4.9 3.6c.8.6 1.9.1 2.1-.9l2.5-13.5ZM8.4 13.3l9.8-6.1c.2-.1.4.2.2.3l-8.1 7.4-.3 3.9c0 .3-.4.4-.5.1l-1.3-4-3.8-1.5c-.3-.1-.3-.5 0-.6l13.5-5.3-9.5 5.8Z" />
             </svg>
-            <div className="flex flex-col leading-tight">
-              <span>Grupo VDT - NBA</span>
-              <span className="text-[11px] font-medium text-white/80">Palpites e análises de NBA</span>
-            </div>
+            <span className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-sky-500" aria-hidden="true" />
+              Basquete tips
+            </span>
           </a>
 
           <a
             href="https://t.me/+cfgSnGAJ82FiYzQx"
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-white transition-all hover:scale-[1.02] cursor-pointer ${
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl border font-semibold transition-colors cursor-pointer ${
               theme === "dark"
-                ? "bg-purple-600 hover:bg-purple-700"
-                : "bg-purple-600 hover:bg-purple-700"
+                ? "border-zinc-800 bg-zinc-800/80 text-zinc-100 hover:bg-zinc-800"
+                : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
             }`}
           >
             <svg
@@ -806,10 +808,10 @@ export default function DashboardHome() {
             >
               <path d="M21.9 4.6c.2-1-0.7-1.7-1.6-1.3L2.6 10.3c-1 .4-.9 1.8.1 2.2l4.7 1.8 1.8 5.7c.3 1.1 1.7 1.2 2.2.3l2.8-4.9 4.9 3.6c.8.6 1.9.1 2.1-.9l2.5-13.5ZM8.4 13.3l9.8-6.1c.2-.1.4.2.2.3l-8.1 7.4-.3 3.9c0 .3-.4.4-.5.1l-1.3-4-3.8-1.5c-.3-.1-.3-.5 0-.6l13.5-5.3-9.5 5.8Z" />
             </svg>
-            <div className="flex flex-col leading-tight">
-              <span>MegaCantos - Futebol</span>
-              <span className="text-[11px] font-medium text-white/80">Palpites diários de Futebol</span>
-            </div>
+            <span className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-purple-500" aria-hidden="true" />
+              Futebol tips
+            </span>
           </a>
         </div>
       </div>
