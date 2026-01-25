@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAnalytics } from "@/contexts/AnalyticsContext";
 
 const STAKES_PREDEFINIDAS = [0.2, 0.5, 1, 2, 5];
 
@@ -32,6 +33,7 @@ const ESPORTES_PREDEFINIDOS = [
 export default function RegistrarEntradasPage() {
   const router = useRouter();
   const { theme } = useTheme();
+  const { trackEntradaRegistered } = useAnalytics();
   const [bancaInicial, setBancaInicial] = useState<number | null>(null);
   const [bancaAtual, setBancaAtual] = useState<number | null>(null);
   const [stakeBase, setStakeBase] = useState<number | null>(null);
@@ -560,6 +562,9 @@ export default function RegistrarEntradasPage() {
         setLoading(false);
         return;
       }
+
+      // Track analytics
+      trackEntradaRegistered({ esporte: esporteFinal, mercado: mercadoFinal, resultado });
 
       // Salva sugestão de mercado por esporte (best-effort)
       if (mercadoFinal) {

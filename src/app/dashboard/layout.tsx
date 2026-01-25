@@ -7,6 +7,7 @@ import UserMenu from "@/components/UserMenu";
 import ThemeToggle from "@/components/ThemeToggle";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { useTheme } from "@/contexts/ThemeContext";
+import { AnalyticsProvider } from "@/contexts/AnalyticsContext";
 
 function NavItem({
   href,
@@ -53,6 +54,7 @@ export default function DashboardLayout({
   }, [pathname]);
 
   return (
+    <AnalyticsProvider>
     <div className={`min-h-screen ${
       theme === "dark" ? "bg-zinc-950" : "bg-zinc-50"
     }`}>
@@ -202,5 +204,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </AnalyticsProvider>
   );
 }

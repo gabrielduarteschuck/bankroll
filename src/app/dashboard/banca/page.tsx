@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAnalytics } from "@/contexts/AnalyticsContext";
 
 type StakePersonalizada = {
   id: string;
@@ -14,6 +15,7 @@ type StakePersonalizada = {
 
 export default function BancaPage() {
   const { theme } = useTheme();
+  const { trackBancaCreated } = useAnalytics();
   const [bancaInicial, setBancaInicial] = useState<number | null>(null);
   const [bancaAtual, setBancaAtual] = useState<number | null>(null);
   const [stakeBase, setStakeBase] = useState<number | null>(null);
@@ -381,6 +383,12 @@ export default function BancaPage() {
         // Recarrega os dados
         await loadBanca();
         const isFirst = !existingBanca || !(Number(existingBanca?.valor || 0) > 0);
+
+        // Track analytics
+        if (isFirst) {
+          trackBancaCreated({ valor: valorBanca });
+        }
+
         alert(
           isFirst
             ? `✅ Banca inicial salva com sucesso!\n\nValor: R$ ${valorBanca.toLocaleString("pt-BR", {

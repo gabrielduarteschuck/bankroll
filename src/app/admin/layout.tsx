@@ -98,6 +98,7 @@ export default function AdminLayout({
             </Link>
 
             <NavItem href="/admin/users" label="Usuários" />
+            <NavItem href="/admin/metricas" label="Métricas" />
             <NavItem href="/admin/entradas-publicadas" label="Entradas publicadas" />
             <NavItem href="/admin/relatorios" label="Relatórios" />
           </nav>
