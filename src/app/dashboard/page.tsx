@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -16,7 +17,10 @@ type FiltroPeriodo =
   | "90dias"
   | "personalizado";
 
+const ADMIN_EMAIL = "duarte.schuck@icloud.com";
+
 export default function DashboardHome() {
+  const router = useRouter();
   const [totalEntradas, setTotalEntradas] = useState(0);
   const [greens, setGreens] = useState(0);
   const [reds, setReds] = useState(0);
@@ -28,6 +32,7 @@ export default function DashboardHome() {
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("7dias");
   const [dataInicio, setDataInicio] = useState<string>("");
   const [dataFim, setDataFim] = useState<string>("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -119,6 +124,11 @@ export default function DashboardHome() {
       if (!user) {
         setLoading(false);
         return;
+      }
+
+      // Verifica se é admin
+      if (user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        setIsAdmin(true);
       }
 
       // Busca banca (fallback automático caso a coluna stake_base ainda não exista)
@@ -263,11 +273,44 @@ export default function DashboardHome() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Painel</h1>
-        <p className={`text-sm ${textSecondary}`}>
-          Visão geral das suas métricas de trading
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Painel</h1>
+          <p className={`text-sm ${textSecondary}`}>
+            Visão geral das suas métricas de trading
+          </p>
+        </div>
+        {isAdmin && (
+          <button
+            onClick={() => router.push("/admin/analises-ia")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+              theme === "dark"
+                ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                : "bg-emerald-600 text-white hover:bg-emerald-700"
+            }`}
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+            Admin
+          </button>
+        )}
       </div>
 
       {/* Filtro (uma opção) */}
