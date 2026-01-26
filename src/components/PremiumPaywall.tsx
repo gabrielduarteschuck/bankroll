@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { supabase } from "@/lib/supabaseClient";
 
 interface PremiumPaywallProps {
   feature: "sugestoes" | "multiplas";
@@ -8,9 +10,25 @@ interface PremiumPaywallProps {
 
 export default function PremiumPaywall({ feature }: PremiumPaywallProps) {
   const { theme } = useTheme();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  const checkoutUrl = process.env.NEXT_PUBLIC_STRIPE_CHECKOUT_URL ||
+  useEffect(() => {
+    async function getEmail() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserEmail(user.email);
+      }
+    }
+    getEmail();
+  }, []);
+
+  const baseCheckoutUrl = process.env.NEXT_PUBLIC_STRIPE_CHECKOUT_URL ||
     "https://buy.stripe.com/3cI5kC77baPigh99ToaMU01";
+
+  // Adiciona o email do usuário como prefilled_email para garantir que o email bate
+  const checkoutUrl = userEmail
+    ? `${baseCheckoutUrl}?prefilled_email=${encodeURIComponent(userEmail)}`
+    : baseCheckoutUrl;
 
   const textPrimary = theme === "dark" ? "text-white" : "text-zinc-900";
   const textSecondary = theme === "dark" ? "text-zinc-400" : "text-zinc-600";
