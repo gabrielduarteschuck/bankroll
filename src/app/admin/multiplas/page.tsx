@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
+import { normalizeAffiliateLink } from "@/lib/affiliateLinks";
 
 type Toast = { type: "success" | "error"; message: string } | null;
 
@@ -223,7 +224,9 @@ export default function AdminMultiplasPage() {
         descricao: descricao.trim(),
         odd_total: oddNum,
         quantidade_jogos: qtdNum,
-        link_bilhete: linkBilhete.trim() || null,
+        link_bilhete: linkBilhete.trim()
+          ? normalizeAffiliateLink(linkBilhete.trim())
+          : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -505,10 +508,30 @@ export default function AdminMultiplasPage() {
                 <input
                   value={linkBilhete}
                   onChange={(e) => setLinkBilhete(e.target.value)}
+                  onPaste={(e) => {
+                    try {
+                      const pasted = e.clipboardData.getData("text");
+                      if (!pasted) return;
+                      const normalized = normalizeAffiliateLink(pasted);
+                      const pastedTrim = pasted.trim();
+                      if (normalized && normalized !== pastedTrim) {
+                        e.preventDefault();
+                        setLinkBilhete(normalized);
+                      }
+                    } catch {
+                      // noop
+                    }
+                  }}
+                  onBlur={() => {
+                    const v = linkBilhete.trim();
+                    if (!v) return;
+                    const normalized = normalizeAffiliateLink(v);
+                    if (normalized && normalized !== v) setLinkBilhete(normalized);
+                  }}
                   placeholder="https://..."
                   className={`w-full p-3 rounded-xl border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-amber-500`}
                 />
-                <div className={`mt-2 text-xs ${textTertiary}`}>Link para a casa de apostas.</div>
+                <div className={`mt-2 text-xs ${textTertiary}`}>Link para a casa de apostas. Tag de afiliado adicionada automaticamente.</div>
               </div>
             </div>
 
