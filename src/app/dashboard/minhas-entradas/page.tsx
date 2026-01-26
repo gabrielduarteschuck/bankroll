@@ -46,6 +46,7 @@ type Multipla = {
   data_aposta: string | null;
   resultado: "green" | "red" | "pendente";
   valor_resultado: number | null;
+  favorita?: boolean | null;
   created_at: string;
 };
 
@@ -247,6 +248,34 @@ export default function MinhasEntradasPage() {
 
       setEntradas((prev) =>
         prev.map((e) => (e.id === entrada.id ? { ...e, favorita: newValue } : e))
+      );
+    } catch {
+      alert("Erro ao atualizar favorito");
+    }
+  }
+
+  async function toggleMultiplaFavorita(multipla: Multipla) {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const newValue = !(multipla.favorita === true);
+      const { error } = await supabase
+        .from("apostas_multiplas")
+        .update({ favorita: newValue, updated_at: new Date().toISOString() })
+        .eq("id", multipla.id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        alert("Erro ao atualizar favorito");
+        return;
+      }
+
+      setMultiplas((prev) =>
+        prev.map((m) => (m.id === multipla.id ? { ...m, favorita: newValue } : m))
       );
     } catch {
       alert("Erro ao atualizar favorito");
@@ -720,9 +749,9 @@ export default function MinhasEntradasPage() {
 
       {/* Múltiplas */}
       {(multiplasFiltradas.length > 0 || highlightMultiplaId) && (
-        <div className="space-y-4">
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h2 className={`text-lg font-semibold ${textPrimary}`}>Múltiplas</h2>
+            <h2 className={`text-base font-semibold ${textPrimary}`}>Múltiplas</h2>
             {highlightMultiplaId ? (
               <a
                 href="/dashboard/minhas-entradas"
@@ -744,38 +773,66 @@ export default function MinhasEntradasPage() {
               return (
                 <div
                   key={m.id}
-                  className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-sm ${
+                  className={`rounded-xl border ${cardBorder} ${cardBg} p-4 shadow-sm ${
                     highlighted ? (theme === "dark" ? "ring-2 ring-green-500/40" : "ring-2 ring-green-500/30") : ""
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div>
-                      <div className={`text-xs ${textTertiary} mb-1`}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <div className={`text-[11px] ${textTertiary}`}>
                         {formatDate(m.created_at)}
-                        {m.data_aposta ? ` • Data: ${formatDateOnly(m.data_aposta)}` : ""}
+                        {m.data_aposta ? ` • ${formatDateOnly(m.data_aposta)}` : ""}
                       </div>
-                      <div className={`text-sm font-semibold ${textPrimary}`}>
+                      <div className={`text-sm font-semibold ${textPrimary} mt-0.5`}>
                         Múltipla • {items.length} seleções • Odd {Number(m.odd_combinada || 0).toFixed(2)}
                       </div>
-                      <div className={`text-xs ${textSecondary} mt-1`}>
-                        Unidades: {Number(m.unidades || 0).toLocaleString("pt-BR")} • Valor: R${" "}
+                      <div className={`text-[11px] ${textSecondary} mt-0.5`}>
+                        {Number(m.unidades || 0).toLocaleString("pt-BR")} un • R${" "}
                         {Number(m.valor_apostado || 0).toLocaleString("pt-BR", {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
-                        {m.casa ? ` • Casa: ${m.casa}` : ""}
-                        {m.tipster ? ` • Tipster: ${m.tipster}` : ""}
+                        {m.casa ? ` • ${m.casa}` : ""}
+                        {m.tipster ? ` • ${m.tipster}` : ""}
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => toggleMultiplaFavorita(m)}
+                        className={`px-2 py-1 rounded text-xs font-medium cursor-pointer transition-colors border ${
+                          m.favorita
+                            ? theme === "dark"
+                              ? "bg-amber-900/20 text-amber-200 hover:bg-amber-900/30 border-amber-800"
+                              : "bg-amber-50 text-amber-900 hover:bg-amber-100 border-amber-300"
+                            : theme === "dark"
+                            ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border-zinc-700"
+                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-zinc-200"
+                        }`}
+                        aria-label={m.favorita ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-3.5 w-3.5"
+                          fill={m.favorita ? "currentColor" : "none"}
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557L3.04 10.385a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                          />
+                        </svg>
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
                           setEditingMultiplaId(m.id);
                           setEditMultiplaResultado(m.resultado);
                         }}
-                        className={`px-3 py-1 rounded text-xs font-medium cursor-pointer transition-colors ${
+                        className={`px-2 py-1 rounded text-xs font-medium cursor-pointer transition-colors ${
                           theme === "dark"
                             ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
                             : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
@@ -787,13 +844,13 @@ export default function MinhasEntradasPage() {
                   </div>
 
                   {editingMultiplaId === m.id ? (
-                    <div className={`rounded-xl border ${cardBorder} ${infoBg} p-4`}>
-                      <div className={`text-xs font-semibold ${textSecondary} mb-2`}>Atualizar resultado</div>
-                      <div className="grid grid-cols-3 gap-2">
+                    <div className={`rounded-lg border ${cardBorder} ${infoBg} p-3`}>
+                      <div className={`text-[11px] font-semibold ${textSecondary} mb-1.5`}>Atualizar resultado</div>
+                      <div className="grid grid-cols-3 gap-1.5">
                         {(["pendente", "green", "red"] as const).map((r) => (
                           <label
                             key={r}
-                            className={`flex items-center justify-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                            className={`flex items-center justify-center p-2 rounded-lg border cursor-pointer transition-colors ${
                               editMultiplaResultado === r
                                 ? r === "green"
                                   ? "bg-green-600 border-green-600 hover:bg-green-700 text-white"
@@ -811,9 +868,9 @@ export default function MinhasEntradasPage() {
                               value={r}
                               checked={editMultiplaResultado === r}
                               onChange={(e) => setEditMultiplaResultado(e.target.value as any)}
-                              className="mr-2"
+                              className="mr-1.5"
                             />
-                            <span className={`text-sm font-semibold ${
+                            <span className={`text-xs font-semibold ${
                               editMultiplaResultado === r ? "text-white" : textPrimary
                             }`}>
                               {r === "pendente" ? "Pendente" : r === "green" ? "Green" : "Red"}
@@ -821,12 +878,12 @@ export default function MinhasEntradasPage() {
                           </label>
                         ))}
                       </div>
-                      <div className="mt-3 flex gap-2">
+                      <div className="mt-2 flex gap-1.5">
                         <button
                           type="button"
                           onClick={() => saveMultiplaResultado(m)}
                           disabled={saving}
-                          className={`px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-60 ${
+                          className={`px-3 py-1.5 rounded-lg text-white text-xs font-medium disabled:opacity-60 ${
                             theme === "dark" ? "bg-zinc-700 hover:bg-zinc-600" : "bg-zinc-900 hover:bg-zinc-800"
                           }`}
                         >
@@ -836,7 +893,7 @@ export default function MinhasEntradasPage() {
                           type="button"
                           onClick={() => setEditingMultiplaId(null)}
                           disabled={saving}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-60 ${
                             theme === "dark"
                               ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
                               : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
@@ -847,11 +904,11 @@ export default function MinhasEntradasPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <div className={`text-xs ${textTertiary}`}>Resultado</div>
+                        <div className={`text-[11px] ${textTertiary}`}>Resultado</div>
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getResultadoColor(
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${getResultadoColor(
                             m.resultado
                           )}`}
                         >
@@ -861,9 +918,9 @@ export default function MinhasEntradasPage() {
 
                       {typeof m.valor_resultado === "number" ? (
                         <div className="flex items-center justify-between">
-                          <div className={`text-xs ${textTertiary}`}>Valor Resultado</div>
+                          <div className={`text-[11px] ${textTertiary}`}>Valor Resultado</div>
                           <div
-                            className={`text-sm font-semibold ${
+                            className={`text-xs font-semibold ${
                               (m.valor_resultado || 0) >= 0 ? "text-green-600" : "text-red-600"
                             }`}
                           >
@@ -877,24 +934,24 @@ export default function MinhasEntradasPage() {
                       ) : null}
 
                       {items.length > 0 ? (
-                        <div className={`mt-3 rounded-xl border ${cardBorder} ${infoBg} p-4`}>
-                          <div className={`text-xs font-semibold ${textSecondary} mb-2`}>Seleções</div>
-                          <div className="space-y-2">
+                        <div className={`mt-2 rounded-lg border ${cardBorder} ${infoBg} p-2.5`}>
+                          <div className={`text-[11px] font-semibold ${textSecondary} mb-1.5`}>Seleções</div>
+                          <div className="space-y-1.5">
                             {items.map((it) => (
                               <div
                                 key={it.id}
-                                className="flex items-start justify-between gap-3"
+                                className="flex items-start justify-between gap-2"
                               >
                                 <div className="min-w-0">
-                                  <div className={`text-sm font-medium ${textPrimary} truncate`}>
+                                  <div className={`text-xs font-medium ${textPrimary} truncate`}>
                                     {it.evento}
                                   </div>
-                                  <div className={`text-xs ${textSecondary}`}>
+                                  <div className={`text-[11px] ${textSecondary}`}>
                                     {it.esporte}
                                     {it.mercado ? ` • ${it.mercado}` : ""}
                                   </div>
                                 </div>
-                                <div className={`text-sm font-semibold ${textPrimary}`}>
+                                <div className={`text-xs font-semibold ${textPrimary}`}>
                                   {Number(it.odd || 0).toFixed(2)}
                                 </div>
                               </div>
