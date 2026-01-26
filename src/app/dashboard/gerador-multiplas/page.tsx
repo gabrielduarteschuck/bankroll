@@ -209,7 +209,7 @@ export default function GeradorMultiplasPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {items.map((m, index) => {
             const agg = getAgg(m.id);
             const hasLink = !!(m.link_bilhete && String(m.link_bilhete).trim());
@@ -222,107 +222,142 @@ export default function GeradorMultiplasPage() {
             return (
               <div
                 key={m.id}
-                className={`group relative overflow-hidden rounded-3xl border p-6 shadow-sm transition-all ${
+                className={`group relative rounded-2xl border shadow-sm transition-all ${
                   theme === "dark"
-                    ? "border-amber-500/20 bg-zinc-950 hover:border-amber-500/35 hover:shadow-lg hover:shadow-amber-500/10"
+                    ? "border-amber-500/20 bg-zinc-900 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/5"
                     : "border-amber-200 bg-white hover:border-amber-300 hover:shadow-md"
                 }`}
               >
+                {/* Glow decorativo */}
                 <div
-                  className={`pointer-events-none absolute -top-24 right-0 h-56 w-56 rounded-full blur-3xl ${
-                    theme === "dark" ? "bg-amber-500/10" : "bg-amber-500/15"
+                  className={`pointer-events-none absolute -top-20 -right-20 h-40 w-40 rounded-full blur-3xl ${
+                    theme === "dark" ? "bg-amber-500/5" : "bg-amber-500/10"
                   }`}
                 />
 
-                <div className="relative space-y-4">
-                  {/* Header: Entrada XX, Tipo, Status */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                {/* Container principal com padding consistente */}
+                <div className="relative p-5 sm:p-6 flex flex-col gap-5">
+
+                  {/* HEADER: Entrada + Tipo + Status */}
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
                       <span className={`text-xs font-bold uppercase tracking-wider ${
-                        theme === "dark" ? "text-amber-200/90" : "text-amber-800"
+                        theme === "dark" ? "text-amber-300" : "text-amber-700"
                       }`}>
                         Entrada {entradaNum}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${
-                        theme === "dark" ? "bg-amber-500/20 text-amber-300" : "bg-amber-100 text-amber-800"
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        theme === "dark" ? "bg-amber-500/20 text-amber-200" : "bg-amber-100 text-amber-700"
                       }`}>
                         Multipla
                       </span>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide ${
                       isAberto
                         ? theme === "dark"
-                          ? "bg-emerald-500/20 text-emerald-300"
-                          : "bg-emerald-100 text-emerald-700"
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : "bg-emerald-50 text-emerald-600 border border-emerald-200"
                         : theme === "dark"
-                          ? "bg-red-500/20 text-red-300"
-                          : "bg-red-100 text-red-700"
+                          ? "bg-red-500/15 text-red-400 border border-red-500/30"
+                          : "bg-red-50 text-red-600 border border-red-200"
                     }`}>
                       {isAberto ? 'ABERTO' : 'FECHADO'}
                     </span>
                   </div>
 
-                  {/* Imagem do bilhete (se houver) */}
+                  {/* BLOCO DE RESUMO: Card visual independente */}
+                  <div className={`rounded-xl p-4 ${
+                    theme === "dark"
+                      ? "bg-zinc-800/50 border border-zinc-700/50"
+                      : "bg-zinc-50 border border-zinc-200"
+                  }`}>
+                    <div className="flex items-center justify-between gap-4">
+                      {/* Odd Total - destaque principal */}
+                      <div className="text-center flex-1">
+                        <div className={`text-[10px] uppercase tracking-wider font-medium mb-1 ${textTertiary}`}>
+                          Odd Total
+                        </div>
+                        <div className={`text-2xl sm:text-3xl font-bold ${textPrimary}`}>
+                          {Number(m.odd_total).toFixed(2)}
+                        </div>
+                      </div>
+
+                      {/* Divisor vertical */}
+                      <div className={`w-px h-12 ${
+                        theme === "dark" ? "bg-zinc-700" : "bg-zinc-300"
+                      }`} />
+
+                      {/* Quantidade de jogos */}
+                      <div className="text-center flex-1">
+                        <div className={`text-[10px] uppercase tracking-wider font-medium mb-1 ${textTertiary}`}>
+                          Jogos
+                        </div>
+                        <div className={`text-2xl sm:text-3xl font-bold ${textPrimary}`}>
+                          {m.quantidade_jogos}
+                        </div>
+                      </div>
+
+                      {/* Divisor vertical */}
+                      <div className={`w-px h-12 ${
+                        theme === "dark" ? "bg-zinc-700" : "bg-zinc-300"
+                      }`} />
+
+                      {/* Chance de Green */}
+                      <div className="text-center flex-1">
+                        <div className={`text-[10px] uppercase tracking-wider font-medium mb-1 ${textTertiary}`}>
+                          Chance Green
+                        </div>
+                        <div className={`text-2xl sm:text-3xl font-bold ${
+                          confianca >= 70
+                            ? theme === "dark" ? "text-emerald-400" : "text-emerald-600"
+                            : confianca >= 50
+                              ? theme === "dark" ? "text-amber-400" : "text-amber-600"
+                              : theme === "dark" ? "text-red-400" : "text-red-600"
+                        }`}>
+                          {confianca}%
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* TITULO */}
+                  <div>
+                    <h3 className={`text-base sm:text-lg font-bold ${textPrimary}`}>
+                      {m.titulo}
+                    </h3>
+                    <p className={`text-xs mt-1 ${textTertiary}`}>
+                      Publicado em {new Date(m.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+
+                  {/* IMAGEM DO BILHETE (se houver) - Card independente */}
                   {m.image_url && (
-                    <div className="relative aspect-[16/9] overflow-hidden rounded-2xl">
+                    <div className={`rounded-xl overflow-hidden border ${
+                      theme === "dark" ? "border-zinc-700/50" : "border-zinc-200"
+                    }`}>
                       <img
                         src={m.image_url}
                         alt={m.titulo}
-                        className="w-full h-full object-cover"
+                        className="w-full h-auto max-h-[300px] object-contain bg-black/5"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                     </div>
                   )}
 
-                  {/* Bloco de destaque: Odd Total, Qtd Jogos, % Chance de Green */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <h3 className={`text-lg font-bold ${textPrimary}`}>{m.titulo}</h3>
-                    </div>
-
-                    <div
-                      className={`shrink-0 rounded-2xl border px-4 py-3 text-center min-w-[100px] ${
-                        theme === "dark"
-                          ? "border-zinc-800 bg-zinc-900/60"
-                          : "border-zinc-200 bg-zinc-50"
-                      }`}
-                    >
-                      <div className={`text-xs ${textTertiary}`}>Odd Total</div>
-                      <div className={`text-xl font-bold ${textPrimary}`}>
-                        {Number(m.odd_total).toFixed(2)}
-                      </div>
-                      <div className={`mt-1 text-xs ${textTertiary}`}>Chance Green</div>
-                      <div className={`text-sm font-semibold ${
-                        confianca >= 70
-                          ? theme === "dark" ? "text-emerald-300" : "text-emerald-600"
-                          : confianca >= 50
-                            ? theme === "dark" ? "text-amber-300" : "text-amber-600"
-                            : theme === "dark" ? "text-red-300" : "text-red-600"
-                      }`}>
-                        {confianca}%
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Info adicional */}
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                      theme === "dark" ? "bg-zinc-800 text-zinc-300" : "bg-zinc-100 text-zinc-700"
+                  {/* DESCRICAO - Card independente com respiro */}
+                  {m.descricao && (
+                    <div className={`rounded-xl p-4 ${
+                      theme === "dark"
+                        ? "bg-zinc-800/30 border border-zinc-700/30"
+                        : "bg-zinc-50/50 border border-zinc-200/50"
                     }`}>
-                      {m.quantidade_jogos} {m.quantidade_jogos === 1 ? 'jogo' : 'jogos'}
-                    </span>
-                    <span className={`text-xs ${textTertiary}`}>
-                      Publicado em {new Date(m.created_at).toLocaleDateString("pt-BR")}
-                    </span>
-                  </div>
+                      <div className={`text-sm leading-relaxed whitespace-pre-wrap ${textSecondary}`}>
+                        {m.descricao}
+                      </div>
+                    </div>
+                  )}
 
-                  {/* Descricao completa */}
-                  <div className={`text-sm ${textSecondary} whitespace-pre-wrap`}>
-                    {m.descricao}
-                  </div>
-
-                  {/* Botoes: CTA e Votos */}
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  {/* ACOES: Botao + Votos */}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-1">
                     <button
                       type="button"
                       disabled={!hasLink}
@@ -331,10 +366,10 @@ export default function GeradorMultiplasPage() {
                         const url = String(m.link_bilhete);
                         window.open(url, "_blank", "noopener,noreferrer");
                       }}
-                      className={`h-11 px-5 rounded-xl font-semibold cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                      className={`h-11 px-6 rounded-xl font-semibold text-sm cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                         theme === "dark"
-                          ? "bg-amber-500 text-white hover:bg-amber-400"
-                          : "bg-amber-500 text-white hover:bg-amber-600"
+                          ? "bg-amber-500 text-black hover:bg-amber-400 shadow-lg shadow-amber-500/20"
+                          : "bg-amber-500 text-white hover:bg-amber-600 shadow-md"
                       }`}
                     >
                       Abrir Bilhete
@@ -345,46 +380,48 @@ export default function GeradorMultiplasPage() {
                         type="button"
                         disabled={votesUnavailable || votingId === m.id}
                         onClick={() => vote(m.id, 1)}
-                        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                           isLike
                             ? theme === "dark"
-                              ? "border-emerald-500/40 bg-emerald-900/20 text-emerald-200"
-                              : "border-emerald-300 bg-emerald-50 text-emerald-800"
+                              ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-300"
+                              : "border-emerald-400 bg-emerald-50 text-emerald-700"
                             : theme === "dark"
-                              ? "border-zinc-800 bg-zinc-900/60 text-zinc-200 hover:bg-zinc-800"
-                              : "border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+                              ? "border-zinc-700 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-700/50"
+                              : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50"
                         }`}
-                        aria-label="Like"
+                        aria-label="Green"
                       >
+                        <span className="text-emerald-500">●</span>
                         <span>GREEN</span>
-                        <span className="tabular-nums">{agg.likes}</span>
+                        <span className="tabular-nums opacity-70">{agg.likes}</span>
                       </button>
 
                       <button
                         type="button"
                         disabled={votesUnavailable || votingId === m.id}
                         onClick={() => vote(m.id, -1)}
-                        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                           isDislike
                             ? theme === "dark"
-                              ? "border-red-500/40 bg-red-900/20 text-red-200"
-                              : "border-red-300 bg-red-50 text-red-800"
+                              ? "border-red-500/50 bg-red-500/15 text-red-300"
+                              : "border-red-400 bg-red-50 text-red-700"
                             : theme === "dark"
-                              ? "border-zinc-800 bg-zinc-900/60 text-zinc-200 hover:bg-zinc-800"
-                              : "border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+                              ? "border-zinc-700 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-700/50"
+                              : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50"
                         }`}
-                        aria-label="Dislike"
+                        aria-label="Red"
                       >
+                        <span className="text-red-500">●</span>
                         <span>RED</span>
-                        <span className="tabular-nums">{agg.dislikes}</span>
+                        <span className="tabular-nums opacity-70">{agg.dislikes}</span>
                       </button>
                     </div>
                   </div>
 
                   {votesUnavailable && (
-                    <div className={`text-xs ${textTertiary}`}>
+                    <p className={`text-xs ${textTertiary}`}>
                       Votacao indisponivel (aplique a migration de votos).
-                    </div>
+                    </p>
                   )}
                 </div>
               </div>
