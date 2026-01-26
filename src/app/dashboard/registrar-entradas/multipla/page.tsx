@@ -56,6 +56,11 @@ export default function RegistrarMultiplaPage() {
   const [tipster, setTipster] = useState("");
   const [resultado, setResultado] = useState<"pendente" | "green" | "red">("pendente");
   const [unidades, setUnidades] = useState<string>("1");
+  const [showCustomUnidade, setShowCustomUnidade] = useState(false);
+  const [customUnidade, setCustomUnidade] = useState("");
+
+  // Stakes pré-definidas
+  const UNIDADES_PREDEFINIDAS = [0.2, 0.5, 1, 2, 5];
 
   // Itens
   const [itens, setItens] = useState<MultiplaItem[]>([
@@ -222,15 +227,10 @@ export default function RegistrarMultiplaPage() {
   function validate(): string | null {
     if (itens.length < 2) return "A múltipla precisa ter pelo menos 2 seleções.";
     for (const it of itens) {
-      if (!esporteFinalValue(it)) return "Selecione o esporte em todas as seleções.";
-      if (!it.evento.trim()) return "Preencha o evento em todas as seleções.";
       const o = toOddNumber(it.odd);
       if (!Number.isFinite(o) || o <= 1) return "As odds devem ser maiores que 1 em todas as seleções.";
     }
     if (!unidadesNum) return "Informe unidades válidas (ex: 1, 1.5, 2).";
-    if (!valorUnidade || valorUnidade <= 0) {
-      return "Defina o valor de 1 unidade na aba Banca para calcular o valor monetário.";
-    }
     if (!oddCombinada || oddCombinada <= 1) return "Odd combinada inválida.";
     return null;
   }
@@ -290,9 +290,9 @@ export default function RegistrarMultiplaPage() {
       const itemsPayload = itens.map((it) => ({
         user_id: user.id,
         multipla_id: multiplaId,
-        esporte: esporteFinalValue(it),
-        evento: it.evento.trim(),
-        mercado: it.mercado.trim() ? it.mercado.trim() : null,
+        esporte: esporteFinalValue(it) || null,
+        evento: it.evento.trim() || null,
+        mercado: it.mercado.trim() || null,
         odd: toOddNumber(it.odd),
       }));
 
@@ -440,7 +440,7 @@ export default function RegistrarMultiplaPage() {
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div>
                       <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>
-                        Esporte
+                        Esporte <span className={textTertiary}>(opcional)</span>
                       </label>
                       <div className="space-y-2">
                         <select
@@ -487,7 +487,7 @@ export default function RegistrarMultiplaPage() {
                     </div>
                     <div className="md:col-span-2">
                       <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>
-                        Evento / Seleção
+                        Evento / Seleção <span className={textTertiary}>(opcional)</span>
                       </label>
                       <input
                         value={it.evento}
@@ -498,7 +498,7 @@ export default function RegistrarMultiplaPage() {
                     </div>
                     <div className="md:col-span-2">
                       <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>
-                        Mercado (opcional)
+                        Mercado <span className={textTertiary}>(opcional)</span>
                       </label>
                       <input
                         value={it.mercado}
@@ -538,22 +538,71 @@ export default function RegistrarMultiplaPage() {
               </div>
             </div>
 
+            {/* Unidades */}
+            <div>
+              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+                Unidades
+              </label>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {UNIDADES_PREDEFINIDAS.map((un) => (
+                  <button
+                    key={un}
+                    type="button"
+                    onClick={() => {
+                      setUnidades(un.toString());
+                      setShowCustomUnidade(false);
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors ${
+                      unidades === un.toString() && !showCustomUnidade
+                        ? theme === "dark"
+                          ? "bg-emerald-600 text-white"
+                          : "bg-emerald-600 text-white"
+                        : theme === "dark"
+                          ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700"
+                          : "bg-white text-zinc-700 hover:bg-zinc-50 border border-zinc-300"
+                    }`}
+                  >
+                    {un}Un
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setShowCustomUnidade(!showCustomUnidade)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors ${
+                    showCustomUnidade
+                      ? theme === "dark"
+                        ? "bg-emerald-600 text-white"
+                        : "bg-emerald-600 text-white"
+                      : theme === "dark"
+                        ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700"
+                        : "bg-white text-zinc-700 hover:bg-zinc-50 border border-zinc-300"
+                  }`}
+                >
+                  + Outro
+                </button>
+              </div>
+              {showCustomUnidade && (
+                <input
+                  value={customUnidade}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^\d,.-]/g, "");
+                    setCustomUnidade(val);
+                    setUnidades(val);
+                  }}
+                  inputMode="decimal"
+                  placeholder="Digite o valor (ex: 1.5)"
+                  className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
+                  autoFocus
+                />
+              )}
+            </div>
+
             {/* Campos adicionais */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                  Unidades
+                  Casa <span className={textTertiary}>(opcional)</span>
                 </label>
-                <input
-                  value={unidades}
-                  onChange={(e) => setUnidades(e.target.value.replace(/[^\d,.-]/g, ""))}
-                  inputMode="decimal"
-                  placeholder="Ex: 1.5"
-                  className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
-                />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Casa</label>
                 <input
                   value={casa}
                   onChange={(e) => setCasa(e.target.value)}
@@ -648,7 +697,7 @@ export default function RegistrarMultiplaPage() {
               </span>
             </div>
             <div className={`mt-4 text-xs ${textTertiary}`}>
-              Validações: mínimo 2 seleções e odds &gt; 1.
+              Apenas odds &gt; 1 são obrigatórias. Mínimo 2 seleções.
             </div>
           </div>
         </div>
