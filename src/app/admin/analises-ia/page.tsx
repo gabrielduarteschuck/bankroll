@@ -414,17 +414,43 @@ export default function AdminAnalisesIAPage() {
                     {confianca}%
                   </div>
                 </div>
-                <input
-                  type="range"
-                  min={20}
-                  max={100}
-                  step={1}
-                  value={confianca}
-                  onChange={(e) => setConfianca(parseInt(e.target.value, 10))}
-                  className="w-full accent-emerald-500"
-                />
+                {/* Controles mobile-friendly */}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setConfianca(Math.max(20, confianca - 5))}
+                    className={`w-12 h-12 rounded-xl font-bold text-xl flex items-center justify-center transition-colors ${
+                      theme === "dark"
+                        ? "bg-zinc-800 text-white hover:bg-zinc-700 active:bg-zinc-600"
+                        : "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 active:bg-zinc-300"
+                    }`}
+                  >
+                    −
+                  </button>
+                  <input
+                    type="range"
+                    min={20}
+                    max={100}
+                    step={1}
+                    value={confianca}
+                    onChange={(e) => setConfianca(parseInt(e.target.value, 10))}
+                    className="flex-1 h-3 accent-emerald-500 cursor-pointer"
+                    style={{ touchAction: "none" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setConfianca(Math.min(100, confianca + 5))}
+                    className={`w-12 h-12 rounded-xl font-bold text-xl flex items-center justify-center transition-colors ${
+                      theme === "dark"
+                        ? "bg-zinc-800 text-white hover:bg-zinc-700 active:bg-zinc-600"
+                        : "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 active:bg-zinc-300"
+                    }`}
+                  >
+                    +
+                  </button>
+                </div>
                 <div className={`mt-2 text-xs ${textTertiary}`}>
-                  Ajuste entre 20% e 100% com base na força das evidências.
+                  Ajuste entre 20% e 100% com base na força das evidências. Use os botões ou arraste o slider.
                 </div>
               </div>
 
