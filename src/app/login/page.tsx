@@ -2,11 +2,9 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-
-const STRIPE_CHECKOUT_URL = "https://buy.stripe.com/9B6aEW637aPiaWPd5AaMU00";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,18 +14,13 @@ export default function LoginPage() {
   // Celular (Brasil): salva internamente só números (11 dígitos) e persiste em E.164 (+55XXXXXXXXXXX)
   const [phoneDigits, setPhoneDigits] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
-
-  const checkoutUrl = useMemo(() => {
-    const envUrl = String(process.env.NEXT_PUBLIC_STRIPE_CHECKOUT_URL || "").trim();
-    return envUrl || STRIPE_CHECKOUT_URL;
-  }, []);
 
   // Mensagens via query params (Supabase /login?error=... e /login?reset=1)
   useEffect(() => {
@@ -131,22 +124,6 @@ export default function LoginPage() {
 
       // Aguarda um pouco para garantir que os cookies sejam salvos
       await new Promise((resolve) => setTimeout(resolve, 200));
-
-      // Checa pagamento (best-effort). Se não estiver pago, manda para o checkout.
-      try {
-        const { data: paid, error: paidErr } = await supabase.rpc("has_paid_access");
-        if (!paidErr && paid !== true) {
-          setSuccess("Para acessar, finalize o pagamento. Redirecionando...");
-          try {
-            window.location.assign(checkoutUrl);
-          } catch {
-            window.location.href = checkoutUrl;
-          }
-          return;
-        }
-      } catch {
-        // se RPC não existir ainda, mantém fluxo normal
-      }
 
       router.push("/dashboard");
       router.refresh();
@@ -318,13 +295,29 @@ export default function LoginPage() {
         return;
       }
 
-      // Conta criada -> manda direto para o checkout (sem depender de sessão/login)
-      setSuccess("Conta criada com sucesso! Redirecionando para o pagamento...");
-      try {
-        window.location.assign(checkoutUrl);
-      } catch {
-        window.location.href = checkoutUrl;
+      // Conta criada -> faz login automático e redireciona pro dashboard
+      setSuccess("Conta criada com sucesso! Entrando...");
+
+      // Aguarda um pouco para garantir que a conta foi criada
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Faz login automático com as credenciais usadas no cadastro
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (loginError) {
+        // Se falhar o login automático, mostra mensagem e deixa o usuário fazer login manual
+        setSuccess("Conta criada! Faça login para continuar.");
+        setIsSignUp(false);
+        setLoading(false);
+        return;
       }
+
+      // Login bem sucedido -> vai pro dashboard
+      router.push("/dashboard");
+      router.refresh();
       return;
     } catch (err: any) {
       clearTimeout(timeoutId);
@@ -371,43 +364,35 @@ export default function LoginPage() {
                 </h1>
                 <p className="text-base text-zinc-600">
                   {isSignUp ? (
-                    <>
-                      Já tem uma conta?{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsSignUp(false);
-                          setIsForgotPassword(false);
-                          setError(null);
-                          setSuccess(null);
-                          setFullName("");
-                          setPhoneDigits("");
-                          setConfirmPassword("");
-                        }}
-                        className="cursor-pointer font-semibold text-zinc-900 underline underline-offset-4 hover:text-zinc-700"
-                      >
-                        Entrar
-                      </button>
-                      .
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSignUp(false);
+                        setIsForgotPassword(false);
+                        setError(null);
+                        setSuccess(null);
+                        setFullName("");
+                        setPhoneDigits("");
+                        setConfirmPassword("");
+                      }}
+                      className="cursor-pointer font-semibold text-zinc-900 underline underline-offset-4 hover:text-zinc-700"
+                    >
+                      Se já possui conta clique aqui
+                    </button>
                   ) : (
-                    <>
-                      Não tem uma conta?{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsSignUp(true);
-                          setIsForgotPassword(false);
-                          setError(null);
-                          setSuccess(null);
-                          setFullName("");
-                        }}
-                        className="cursor-pointer font-semibold text-zinc-900 underline underline-offset-4 hover:text-zinc-700"
-                      >
-                        Criar conta
-                      </button>
-                      .
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSignUp(true);
+                        setIsForgotPassword(false);
+                        setError(null);
+                        setSuccess(null);
+                        setFullName("");
+                      }}
+                      className="cursor-pointer font-semibold text-zinc-900 underline underline-offset-4 hover:text-zinc-700"
+                    >
+                      Não tem conta? Criar conta
+                    </button>
                   )}
                 </p>
               </div>
