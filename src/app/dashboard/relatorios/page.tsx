@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -29,6 +29,17 @@ type Entrada = {
   created_at: string;
 };
 
+type Multipla = {
+  id: string;
+  unidades: number;
+  valor_unidade: number;
+  valor_apostado: number;
+  odd_combinada: number;
+  resultado: "green" | "red" | "pendente";
+  valor_resultado: number | null;
+  created_at: string;
+};
+
 type BancaData = {
   valor: number;
   created_at: string;
@@ -40,6 +51,7 @@ export default function RelatoriosPage() {
   const { theme } = useTheme();
   const [entradas, setEntradas] = useState<Entrada[]>([]);
   const [entradasFiltradas, setEntradasFiltradas] = useState<Entrada[]>([]);
+  const [multiplas, setMultiplas] = useState<Multipla[]>([]);
   const [banca, setBanca] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("todos");
@@ -132,6 +144,56 @@ export default function RelatoriosPage() {
     setEntradasFiltradas(filtered);
   }
 
+  // Filtra múltiplas usando useMemo
+  const multiplasFiltradas = useMemo(() => {
+    let filtered = [...multiplas];
+    const now = new Date();
+    const hoje = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const ontem = new Date(hoje);
+    ontem.setDate(ontem.getDate() - 1);
+
+    switch (filtroPeriodo) {
+      case "hoje":
+        filtered = filtered.filter((m) => new Date(m.created_at) >= hoje);
+        break;
+      case "ontem":
+        filtered = filtered.filter((m) => {
+          const dataMultipla = new Date(m.created_at);
+          return dataMultipla >= ontem && dataMultipla < hoje;
+        });
+        break;
+      case "7dias":
+        const seteDiasAtras = new Date(hoje);
+        seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+        filtered = filtered.filter((m) => new Date(m.created_at) >= seteDiasAtras);
+        break;
+      case "15dias":
+        const quinzeDiasAtras = new Date(hoje);
+        quinzeDiasAtras.setDate(quinzeDiasAtras.getDate() - 15);
+        filtered = filtered.filter((m) => new Date(m.created_at) >= quinzeDiasAtras);
+        break;
+      case "30dias":
+        const trintaDiasAtras = new Date(hoje);
+        trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+        filtered = filtered.filter((m) => new Date(m.created_at) >= trintaDiasAtras);
+        break;
+      case "60dias":
+        const sessentaDiasAtras = new Date(hoje);
+        sessentaDiasAtras.setDate(sessentaDiasAtras.getDate() - 60);
+        filtered = filtered.filter((m) => new Date(m.created_at) >= sessentaDiasAtras);
+        break;
+      case "90dias":
+        const noventaDiasAtras = new Date(hoje);
+        noventaDiasAtras.setDate(noventaDiasAtras.getDate() - 90);
+        filtered = filtered.filter((m) => new Date(m.created_at) >= noventaDiasAtras);
+        break;
+      case "todos":
+      default:
+        break;
+    }
+    return filtered;
+  }, [multiplas, filtroPeriodo]);
+
   async function loadData() {
     try {
       const {
@@ -154,6 +216,19 @@ export default function RelatoriosPage() {
         setEntradas(entradasData as Entrada[]);
       }
 
+      // Carrega múltiplas
+      const { data: multiplasData, error: multiplasError } = await supabase
+        .from("apostas_multiplas")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+
+      if (!multiplasError && multiplasData) {
+        setMultiplas(multiplasData as Multipla[]);
+      } else {
+        setMultiplas([]);
+      }
+
       // Carrega banca
       const { data: bancaData } = await supabase
         .from("banca")
@@ -171,19 +246,36 @@ export default function RelatoriosPage() {
     }
   }
 
-  // Cálculos gerais (usando entradas filtradas)
-  const greens = entradasFiltradas.filter((e) => e.resultado === "green").length;
-  const reds = entradasFiltradas.filter((e) => e.resultado === "red").length;
+  // Cálculos gerais (usando entradas filtradas + múltiplas filtradas)
+  const greensEntradas = entradasFiltradas.filter((e) => e.resultado === "green").length;
+  const greensMultiplas = multiplasFiltradas.filter((m) => m.resultado === "green").length;
+  const greens = greensEntradas + greensMultiplas;
+
+  const redsEntradas = entradasFiltradas.filter((e) => e.resultado === "red").length;
+  const redsMultiplas = multiplasFiltradas.filter((m) => m.resultado === "red").length;
+  const reds = redsEntradas + redsMultiplas;
+
   const total = greens + reds;
   const percentGreen = total > 0 ? (greens / total) * 100 : 0;
   const percentRed = total > 0 ? (reds / total) * 100 : 0;
 
-  // Novas métricas
-  const lucroPrejuizo = entradasFiltradas.reduce((acc, e) => acc + (e.valor_resultado || 0), 0);
-  const stakeTotal = entradasFiltradas.reduce((acc, e) => acc + (e.valor_stake || 0), 0);
-  const oddsMedia = entradasFiltradas.length > 0
-    ? entradasFiltradas.reduce((acc, e) => acc + (e.odd || 0), 0) / entradasFiltradas.length
+  // Novas métricas (incluindo múltiplas)
+  const lucroPrejuizoEntradas = entradasFiltradas.reduce((acc, e) => acc + (e.valor_resultado || 0), 0);
+  const lucroPrejuizoMultiplas = multiplasFiltradas.reduce((acc, m) => acc + (m.valor_resultado || 0), 0);
+  const lucroPrejuizo = lucroPrejuizoEntradas + lucroPrejuizoMultiplas;
+
+  const stakeEntradas = entradasFiltradas.reduce((acc, e) => acc + (e.valor_stake || 0), 0);
+  const stakeMultiplas = multiplasFiltradas.reduce((acc, m) => acc + (m.valor_apostado || 0), 0);
+  const stakeTotal = stakeEntradas + stakeMultiplas;
+
+  // Odds média (entradas simples + odds combinadas das múltiplas)
+  const totalOperacoes = entradasFiltradas.length + multiplasFiltradas.length;
+  const somaOddsEntradas = entradasFiltradas.reduce((acc, e) => acc + (e.odd || 0), 0);
+  const somaOddsMultiplas = multiplasFiltradas.reduce((acc, m) => acc + (m.odd_combinada || 0), 0);
+  const oddsMedia = totalOperacoes > 0
+    ? (somaOddsEntradas + somaOddsMultiplas) / totalOperacoes
     : 0;
+
   const winrate = total > 0 ? (greens / total) * 100 : 0;
   const bancaInicial = banca || 0;
 
@@ -242,41 +334,48 @@ export default function RelatoriosPage() {
       return a.mercado.localeCompare(b.mercado);
     });
 
-  // Dados para gráfico de desempenho da banca
-  const somaResultados = entradasFiltradas.reduce((acc, e) => acc + (e.valor_resultado || 0), 0);
+  // Dados para gráfico de desempenho da banca (entradas + múltiplas)
+  const somaResultados = lucroPrejuizo;
   const bancaAtual = bancaInicial + somaResultados;
 
+  // Combina entradas e múltiplas para evolução da banca, ordenando por data
+  type OperacaoUnificada = { created_at: string; valor_resultado: number | null };
+  const todasOperacoes: OperacaoUnificada[] = [
+    ...entradasFiltradas.map((e) => ({ created_at: e.created_at, valor_resultado: e.valor_resultado })),
+    ...multiplasFiltradas.map((m) => ({ created_at: m.created_at, valor_resultado: m.valor_resultado })),
+  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
   // Calcula evolução da banca ao longo do tempo
-  const evolucaoBanca = entradasFiltradas.reduce(
-    (acc, entrada) => {
+  const evolucaoBanca = todasOperacoes.reduce(
+    (acc, operacao) => {
       const valorAnterior = acc.length > 0 ? acc[acc.length - 1].valor : bancaInicial;
-      const novoValor = valorAnterior + (entrada.valor_resultado || 0);
+      const novoValor = valorAnterior + (operacao.valor_resultado || 0);
       acc.push({
-        data: new Date(entrada.created_at).toLocaleDateString("pt-BR", {
+        data: new Date(operacao.created_at).toLocaleDateString("pt-BR", {
           day: "2-digit",
           month: "2-digit",
         }),
         valor: novoValor,
-        valorResultado: entrada.valor_resultado || 0,
-        dataCompleta: new Date(entrada.created_at),
+        valorResultado: operacao.valor_resultado || 0,
+        dataCompleta: new Date(operacao.created_at),
       });
       return acc;
     },
     [] as { data: string; valor: number; valorResultado: number; dataCompleta: Date }[]
   );
 
-  const dataInicioLabel = entradasFiltradas.length > 0
-    ? new Date(entradasFiltradas[0].created_at).toLocaleDateString("pt-BR")
+  const dataInicioLabel = todasOperacoes.length > 0
+    ? new Date(todasOperacoes[0].created_at).toLocaleDateString("pt-BR")
     : "";
   const dataFimLabel = new Date().toLocaleDateString("pt-BR");
 
   // Projeções
-  const diasComDados = entradasFiltradas.length > 0
+  const diasComDados = todasOperacoes.length > 0
     ? Math.max(
         1,
         Math.ceil(
-          (new Date(entradasFiltradas[entradasFiltradas.length - 1].created_at).getTime() -
-            new Date(entradasFiltradas[0].created_at).getTime()) /
+          (new Date(todasOperacoes[todasOperacoes.length - 1].created_at).getTime() -
+            new Date(todasOperacoes[0].created_at).getTime()) /
             (1000 * 60 * 60 * 24)
         )
       )

@@ -196,38 +196,71 @@ export default function DashboardHome() {
         return;
       }
 
-      if (entradasData) {
-        setTotalEntradas(entradasData.length);
+      // Busca múltiplas com filtro de data
+      let multiplasData: any[] = [];
+      const { data: mData, error: mError } = await supabase
+        .from("apostas_multiplas")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("created_at", inicio)
+        .lte("created_at", fim)
+        .order("created_at", { ascending: false });
 
-        const greensCount = entradasData.filter(
-          (e) => e.resultado === "green"
-        ).length;
-        const redsCount = entradasData.filter(
-          (e) => e.resultado === "red"
-        ).length;
+      if (!mError && mData) {
+        multiplasData = mData;
+      }
 
-        setGreens(greensCount);
-        setReds(redsCount);
+      // Combina entradas + múltiplas para estatísticas
+      const entradasCount = entradasData?.length || 0;
+      const multiplasCount = multiplasData.length;
+      setTotalEntradas(entradasCount + multiplasCount);
 
-        // Calcula banca atual (banca inicial + soma dos resultados)
-        const somaResultados = entradasData.reduce((acc, entrada) => {
-          if (entrada.valor_resultado !== null && entrada.valor_resultado !== undefined) {
-            return acc + toNumber(entrada.valor_resultado);
-          }
-          return acc;
-        }, 0);
-        setLucroLiquido(somaResultados);
+      // Greens e Reds de entradas simples
+      const greensEntradas = entradasData?.filter(
+        (e) => e.resultado === "green"
+      ).length || 0;
+      const redsEntradas = entradasData?.filter(
+        (e) => e.resultado === "red"
+      ).length || 0;
 
-        if (bancaData) {
-          const novaBanca = bancaInicialNum + somaResultados;
-          setBancaAtual(novaBanca);
+      // Greens e Reds de múltiplas
+      const greensMultiplas = multiplasData.filter(
+        (m) => m.resultado === "green"
+      ).length;
+      const redsMultiplas = multiplasData.filter(
+        (m) => m.resultado === "red"
+      ).length;
+
+      setGreens(greensEntradas + greensMultiplas);
+      setReds(redsEntradas + redsMultiplas);
+
+      // Calcula banca atual (banca inicial + soma dos resultados de entradas + múltiplas)
+      const somaResultadosEntradas = entradasData?.reduce((acc, entrada) => {
+        if (entrada.valor_resultado !== null && entrada.valor_resultado !== undefined) {
+          return acc + toNumber(entrada.valor_resultado);
         }
+        return acc;
+      }, 0) || 0;
 
-        // Calcula lucro sobre a banca
-        if (bancaInicialNum > 0) {
-          const lucro = (somaResultados / bancaInicialNum) * 100;
-          setLucroBanca(lucro);
+      const somaResultadosMultiplas = multiplasData.reduce((acc, multipla) => {
+        if (multipla.valor_resultado !== null && multipla.valor_resultado !== undefined) {
+          return acc + toNumber(multipla.valor_resultado);
         }
+        return acc;
+      }, 0);
+
+      const somaResultados = somaResultadosEntradas + somaResultadosMultiplas;
+      setLucroLiquido(somaResultados);
+
+      if (bancaData) {
+        const novaBanca = bancaInicialNum + somaResultados;
+        setBancaAtual(novaBanca);
+      }
+
+      // Calcula lucro sobre a banca
+      if (bancaInicialNum > 0) {
+        const lucro = (somaResultados / bancaInicialNum) * 100;
+        setLucroBanca(lucro);
       }
     } catch (error) {
       console.error("Erro ao carregar dados:", error);

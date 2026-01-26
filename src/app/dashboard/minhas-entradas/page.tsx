@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -207,6 +207,23 @@ export default function MinhasEntradasPage() {
     setEntradasFiltradas(filtradas);
     setPaginaAtual(1);
   }
+
+  // Filtra múltiplas usando useMemo para garantir reatividade
+  const multiplasFiltradas = useMemo(() => {
+    if (filtroPeriodo === "todos") {
+      return multiplas;
+    }
+
+    const dateRange = getDateRange();
+    if (!dateRange) {
+      return multiplas;
+    }
+
+    return multiplas.filter((m) => {
+      const dataMultipla = new Date(m.created_at);
+      return dataMultipla >= new Date(dateRange.inicio) && dataMultipla <= new Date(dateRange.fim);
+    });
+  }, [multiplas, filtroPeriodo, dataInicio, dataFim]);
 
   async function toggleFavorita(entrada: Entrada) {
     try {
@@ -548,12 +565,26 @@ export default function MinhasEntradasPage() {
     return "Pendente";
   }
 
-  const totalEntradas = entradasFiltradas.length;
-  const totalGreens = entradasFiltradas.filter((e) => e.resultado === "green").length;
-  const totalReds = entradasFiltradas.filter((e) => e.resultado === "red").length;
-  const somaResultados = entradasFiltradas.reduce((acc, e) => {
+  // Totais combinados: entradas simples + múltiplas (filtradas)
+  const totalEntradasSimples = entradasFiltradas.length;
+  const totalMultiplas = multiplasFiltradas.length;
+  const totalEntradas = totalEntradasSimples + totalMultiplas;
+
+  const greensEntradas = entradasFiltradas.filter((e) => e.resultado === "green").length;
+  const greensMultiplas = multiplasFiltradas.filter((m) => m.resultado === "green").length;
+  const totalGreens = greensEntradas + greensMultiplas;
+
+  const redsEntradas = entradasFiltradas.filter((e) => e.resultado === "red").length;
+  const redsMultiplas = multiplasFiltradas.filter((m) => m.resultado === "red").length;
+  const totalReds = redsEntradas + redsMultiplas;
+
+  const somaResultadosEntradas = entradasFiltradas.reduce((acc, e) => {
     return acc + (e.valor_resultado || 0);
   }, 0);
+  const somaResultadosMultiplas = multiplasFiltradas.reduce((acc, m) => {
+    return acc + (m.valor_resultado || 0);
+  }, 0);
+  const somaResultados = somaResultadosEntradas + somaResultadosMultiplas;
 
   if (loading) {
     return (
@@ -688,7 +719,7 @@ export default function MinhasEntradasPage() {
       </div>
 
       {/* Múltiplas */}
-      {multiplas.length > 0 && (
+      {(multiplasFiltradas.length > 0 || highlightMultiplaId) && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className={`text-lg font-semibold ${textPrimary}`}>Múltiplas</h2>
@@ -704,7 +735,7 @@ export default function MinhasEntradasPage() {
 
           {(highlightMultiplaId
             ? multiplas.filter((m) => m.id === highlightMultiplaId)
-            : multiplas
+            : multiplasFiltradas
           )
             .slice(0, highlightMultiplaId ? 1 : 10)
             .map((m) => {
