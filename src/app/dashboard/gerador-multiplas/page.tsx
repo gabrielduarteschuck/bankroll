@@ -62,6 +62,7 @@ export default function GeradorMultiplasPage() {
         .from("multiplas")
         .select("*")
         .eq("is_published", true)
+        .eq("is_archived", false)
         .order("created_at", { ascending: false });
 
       setItems((data || []) as Multipla[]);

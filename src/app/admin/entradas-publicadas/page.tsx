@@ -34,6 +34,7 @@ type AiSuggestionRow = {
   link_bilhete_final: string | null;
   home_team: string | null;
   away_team: string | null;
+  is_archived: boolean;
   created_at: string;
 };
 
@@ -155,7 +156,7 @@ export default function AdminEntradasPublicadasPage() {
       const { data, error: err } = await supabase
         .from("ai_suggestions")
         .select(
-          "id, esporte, mercado, descricao, odd, confianca_percent, link_bilhete_final, home_team, away_team, created_at"
+          "id, esporte, mercado, descricao, odd, confianca_percent, link_bilhete_final, home_team, away_team, is_archived, created_at"
         )
         .order("created_at", { ascending: false });
 
@@ -257,6 +258,25 @@ export default function AdminEntradasPublicadasPage() {
     }
   }
 
+  async function restoreItem(id: string) {
+    setSaving(true);
+    try {
+      const { error: restoreErr } = await supabase
+        .from("ai_suggestions")
+        .update({ is_archived: false })
+        .eq("id", id);
+
+      if (restoreErr) {
+        setToast({ type: "error", message: "Erro ao restaurar publicação." });
+        return;
+      }
+      setToast({ type: "success", message: "Sugestão restaurada e visível para usuários!" });
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (checking) {
     return (
       <div className="space-y-6">
@@ -327,12 +347,21 @@ export default function AdminEntradasPublicadasPage() {
               key={row.id}
               className={`rounded-2xl border p-4 shadow-sm ${
                 theme === "dark" ? "border-zinc-800 bg-zinc-950" : "border-zinc-200 bg-white"
-              }`}
+              } ${row.is_archived ? "opacity-70" : ""}`}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <div className={`text-sm font-semibold ${textPrimary}`}>
-                    {row.esporte} • {row.mercado}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className={`text-sm font-semibold ${textPrimary}`}>
+                      {row.esporte} • {row.mercado}
+                    </div>
+                    {row.is_archived && (
+                      <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${
+                        theme === "dark" ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-700"
+                      }`}>
+                        Arquivada
+                      </span>
+                    )}
                   </div>
                   <div className={`mt-1 text-xs ${textTertiary}`}>
                     {formatDateTimeBR(row.created_at) ? `Criado em ${formatDateTimeBR(row.created_at)}` : ""}
@@ -342,18 +371,33 @@ export default function AdminEntradasPublicadasPage() {
 
                 <div className="flex flex-col gap-2 sm:items-end">
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(row)}
-                      disabled={saving}
-                      className={`h-10 px-4 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
-                        theme === "dark"
-                          ? "bg-zinc-900 text-white border border-zinc-800 hover:bg-zinc-800"
-                          : "bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-50"
-                      }`}
-                    >
-                      Editar
-                    </button>
+                    {row.is_archived ? (
+                      <button
+                        type="button"
+                        onClick={() => restoreItem(row.id)}
+                        disabled={saving}
+                        className={`h-10 px-4 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                          theme === "dark"
+                            ? "bg-amber-600 text-white hover:bg-amber-500"
+                            : "bg-amber-600 text-white hover:bg-amber-700"
+                        }`}
+                      >
+                        Restaurar
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openEdit(row)}
+                        disabled={saving}
+                        className={`h-10 px-4 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                          theme === "dark"
+                            ? "bg-zinc-900 text-white border border-zinc-800 hover:bg-zinc-800"
+                            : "bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-50"
+                        }`}
+                      >
+                        Editar
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => removeItem(row.id)}
@@ -370,7 +414,7 @@ export default function AdminEntradasPublicadasPage() {
 
                   <div className={`text-xs ${textTertiary}`}>
                     Odd: <span className={`font-semibold ${textPrimary}`}>{Number(row.odd).toFixed(2)}</span>{" "}
-                    • Confiança:{" "}
+                    • Confianca:{" "}
                     <span className={`${theme === "dark" ? "text-emerald-200" : "text-emerald-700"} font-semibold`}>
                       {row.confianca_percent}%
                     </span>

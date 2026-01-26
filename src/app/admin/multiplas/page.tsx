@@ -19,6 +19,7 @@ type Multipla = {
   image_url: string | null;
   link_bilhete: string | null;
   is_published: boolean;
+  is_archived: boolean;
   created_at: string;
 };
 
@@ -243,9 +244,10 @@ export default function AdminMultiplasPage() {
         }
         setToast({ type: "success", message: "✅ Múltipla atualizada!" });
       } else {
-        // Criar nova
+        // Criar nova - já publicada automaticamente
         payload.created_by = user.id;
-        payload.is_published = false;
+        payload.is_published = true;
+        payload.published_at = new Date().toISOString();
 
         const { error } = await supabase.from("multiplas").insert(payload);
 
@@ -311,6 +313,29 @@ export default function AdminMultiplasPage() {
       await loadMultiplas();
     } catch {
       setToast({ type: "error", message: "Erro ao excluir." });
+    }
+  }
+
+  async function handleRestore(id: string) {
+    try {
+      const { error } = await supabase
+        .from("multiplas")
+        .update({
+          is_archived: false,
+          is_published: true,
+          published_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+
+      if (error) {
+        setToast({ type: "error", message: "Erro ao restaurar." });
+        return;
+      }
+
+      setToast({ type: "success", message: "Múltipla restaurada e publicada!" });
+      await loadMultiplas();
+    } catch {
+      setToast({ type: "error", message: "Erro ao restaurar." });
     }
   }
 
@@ -535,13 +560,22 @@ export default function AdminMultiplasPage() {
                       <h3 className={`font-semibold ${textPrimary}`}>{m.titulo}</h3>
                       <p className={`text-sm ${textSecondary} mt-1 line-clamp-2`}>{m.descricao}</p>
                     </div>
-                    <span className={`flex-shrink-0 px-2 py-1 rounded-lg text-xs font-medium ${
-                      m.is_published
-                        ? "bg-emerald-500/20 text-emerald-500"
-                        : "bg-zinc-500/20 text-zinc-500"
-                    }`}>
-                      {m.is_published ? "Publicada" : "Rascunho"}
-                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {m.is_archived && (
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                          theme === "dark" ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-700"
+                        }`}>
+                          Arquivada
+                        </span>
+                      )}
+                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                        m.is_published
+                          ? "bg-emerald-500/20 text-emerald-500"
+                          : "bg-zinc-500/20 text-zinc-500"
+                      }`}>
+                        {m.is_published ? "Publicada" : "Rascunho"}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
                     <span className={`text-xs ${textTertiary}`}>
@@ -555,16 +589,27 @@ export default function AdminMultiplasPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mt-4">
-                    <button
-                      onClick={() => togglePublish(m.id, m.is_published)}
-                      className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                        m.is_published
-                          ? theme === "dark" ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-                          : theme === "dark" ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-emerald-600 text-white hover:bg-emerald-700"
-                      }`}
-                    >
-                      {m.is_published ? "Despublicar" : "Publicar"}
-                    </button>
+                    {m.is_archived ? (
+                      <button
+                        onClick={() => handleRestore(m.id)}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                          theme === "dark" ? "bg-amber-600 text-white hover:bg-amber-500" : "bg-amber-600 text-white hover:bg-amber-700"
+                        }`}
+                      >
+                        Restaurar
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => togglePublish(m.id, m.is_published)}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                          m.is_published
+                            ? theme === "dark" ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                            : theme === "dark" ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-emerald-600 text-white hover:bg-emerald-700"
+                        }`}
+                      >
+                        {m.is_published ? "Despublicar" : "Publicar"}
+                      </button>
+                    )}
                     <button
                       onClick={() => handleEdit(m)}
                       className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${

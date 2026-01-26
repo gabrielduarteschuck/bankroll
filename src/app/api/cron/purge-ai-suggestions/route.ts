@@ -30,19 +30,32 @@ export async function GET(req: Request) {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Supabase exige filtro no delete; este gte cobre todas as linhas.
-    const { error, count } = await admin
+    // Arquivar sugestões da IA (não deleta, apenas esconde do usuário)
+    const { error: suggestionsError, count: suggestionsCount } = await admin
       .from("ai_suggestions")
-      .delete({ count: "exact" })
+      .update({ is_archived: true })
+      .eq("is_archived", false)
       .gte("created_at", "1970-01-01T00:00:00Z");
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    // Arquivar múltiplas (não deleta, apenas esconde do usuário)
+    const { error: multiplasError, count: multiplasCount } = await admin
+      .from("multiplas")
+      .update({ is_archived: true, is_published: false })
+      .eq("is_archived", false)
+      .gte("created_at", "1970-01-01T00:00:00Z");
+
+    if (suggestionsError || multiplasError) {
+      return NextResponse.json({
+        error: suggestionsError?.message || multiplasError?.message,
+      }, { status: 500 });
     }
 
     return NextResponse.json({
       ok: true,
-      deleted: count ?? null,
+      archived: {
+        suggestions: suggestionsCount ?? 0,
+        multiplas: multiplasCount ?? 0,
+      },
       ranAt: new Date().toISOString(),
     });
   } catch (err: unknown) {
@@ -50,4 +63,3 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

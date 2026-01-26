@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/purge-ai-suggestions",
-      "schedule": "0 5 * * *"
+      "schedule": "30 5 * * *"
     }
   ]
 }

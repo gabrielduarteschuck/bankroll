@@ -84,6 +84,7 @@ export default function SugestoesIAPage() {
         .select(
           "id, league, game_id, home_team, away_team, esporte, mercado, descricao, odd, confianca_percent, link_bilhete_final, created_at"
         )
+        .eq("is_archived", false)
         .order("created_at", { ascending: false });
 
       if (listErr) {
