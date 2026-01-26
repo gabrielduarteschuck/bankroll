@@ -58,9 +58,18 @@ export default function RegistrarMultiplaPage() {
   const [unidades, setUnidades] = useState<string>("1");
   const [showCustomUnidade, setShowCustomUnidade] = useState(false);
   const [customUnidade, setCustomUnidade] = useState("");
+  const [savingStake, setSavingStake] = useState(false);
+  const [customStakes, setCustomStakes] = useState<number[]>([]);
 
-  // Stakes pré-definidas
-  const UNIDADES_PREDEFINIDAS = [0.2, 0.5, 1, 2, 5];
+  // Stakes pré-definidas (base)
+  const UNIDADES_BASE = [0.2, 0.5, 1, 2, 5];
+
+  // Combina base + customizadas, remove duplicatas, ordena
+  const UNIDADES_PREDEFINIDAS = useMemo(() => {
+    const all = [...UNIDADES_BASE, ...customStakes];
+    const unique = [...new Set(all)];
+    return unique.sort((a, b) => a - b);
+  }, [customStakes]);
 
   // Itens
   const [itens, setItens] = useState<MultiplaItem[]>([
@@ -95,6 +104,31 @@ export default function RegistrarMultiplaPage() {
     const t = setTimeout(() => setToast(null), 2500);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // Carrega stakes personalizadas do usuário
+  useEffect(() => {
+    void (async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data } = await supabase
+          .from("stakes_personalizadas")
+          .select("percent")
+          .eq("user_id", user.id)
+          .order("percent", { ascending: true });
+
+        if (data && data.length > 0) {
+          const stakes = data.map((s: { percent: number }) => Number(s.percent));
+          setCustomStakes(stakes);
+        }
+      } catch {
+        // ignora erro silenciosamente
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -222,6 +256,55 @@ export default function RegistrarMultiplaPage() {
 
   function updateItem(id: string, patch: Partial<MultiplaItem>) {
     setItens((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+  }
+
+  async function saveCustomStake() {
+    const val = toUnidadesNumber(customUnidade);
+    if (!Number.isFinite(val) || val <= 0 || val > 100) {
+      setToast({ type: "error", message: "Valor inválido. Use entre 0.1 e 100." });
+      return;
+    }
+
+    setSavingStake(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setToast({ type: "error", message: "Usuário não autenticado." });
+        return;
+      }
+
+      // Verifica se já existe
+      if (UNIDADES_PREDEFINIDAS.includes(val)) {
+        setToast({ type: "error", message: "Esta unidade já existe." });
+        return;
+      }
+
+      const { error } = await supabase.from("stakes_personalizadas").insert({
+        user_id: user.id,
+        nome: `${val}Un`,
+        percent: val,
+      });
+
+      if (error) {
+        if (error.message?.includes("duplicate") || error.message?.includes("unique")) {
+          setToast({ type: "error", message: "Esta unidade já existe." });
+        } else {
+          setToast({ type: "error", message: "Erro ao salvar unidade." });
+        }
+        return;
+      }
+
+      // Atualiza lista local
+      setCustomStakes((prev) => [...prev, val].sort((a, b) => a - b));
+      setUnidades(val.toString());
+      setCustomUnidade("");
+      setShowCustomUnidade(false);
+      setToast({ type: "success", message: `Unidade ${val}Un salva!` });
+    } finally {
+      setSavingStake(false);
+    }
   }
 
   function validate(): string | null {
@@ -582,18 +665,32 @@ export default function RegistrarMultiplaPage() {
                 </button>
               </div>
               {showCustomUnidade && (
-                <input
-                  value={customUnidade}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^\d,.-]/g, "");
-                    setCustomUnidade(val);
-                    setUnidades(val);
-                  }}
-                  inputMode="decimal"
-                  placeholder="Digite o valor (ex: 1.5)"
-                  className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
-                  autoFocus
-                />
+                <div className="flex gap-2">
+                  <input
+                    value={customUnidade}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^\d,.-]/g, "");
+                      setCustomUnidade(val);
+                      setUnidades(val);
+                    }}
+                    inputMode="decimal"
+                    placeholder="Digite o valor (ex: 1.5)"
+                    className={`flex-1 p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={saveCustomStake}
+                    disabled={savingStake || !customUnidade.trim()}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                      theme === "dark"
+                        ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                        : "bg-emerald-600 text-white hover:bg-emerald-700"
+                    }`}
+                  >
+                    {savingStake ? "..." : "Salvar"}
+                  </button>
+                </div>
               )}
             </div>
 
