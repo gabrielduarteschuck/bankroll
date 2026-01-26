@@ -288,10 +288,13 @@ export default function RegistrarMultiplaPage() {
       });
 
       if (error) {
+        console.error("Erro ao salvar stake:", error);
         if (error.message?.includes("duplicate") || error.message?.includes("unique")) {
           setToast({ type: "error", message: "Esta unidade já existe." });
+        } else if (error.message?.includes("stakes_personalizadas")) {
+          setToast({ type: "error", message: "Tabela de stakes não existe. Execute a migration." });
         } else {
-          setToast({ type: "error", message: "Erro ao salvar unidade." });
+          setToast({ type: "error", message: `Erro: ${error.message || "Erro ao salvar unidade."}` });
         }
         return;
       }
