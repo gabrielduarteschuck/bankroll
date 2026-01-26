@@ -71,13 +71,14 @@ export default function ResetPasswordPage() {
         // 0) Fluxo verifyOtp (quando o template manda token_hash/token)
         if (tokenHash) {
           try {
-            const { error: vErr } = await withTimeout(
+            const result = await withTimeout(
               supabase.auth.verifyOtp({
                 type: "recovery",
                 token_hash: tokenHash,
               } as any),
               8000
-            );
+            ) as { error: any };
+            const vErr = result?.error;
             if (vErr) {
               // fallback: se já houver sessão, seguimos
               const {
@@ -113,7 +114,8 @@ export default function ResetPasswordPage() {
         // 1) Fluxo PKCE (recomendado): troca code por sessão
         if (code) {
           try {
-            const { error: exErr } = await withTimeout(supabase.auth.exchangeCodeForSession(code), 8000);
+            const codeResult = await withTimeout(supabase.auth.exchangeCodeForSession(code), 8000) as { error: any };
+            const exErr = codeResult?.error;
             if (exErr) {
               const {
                 data: { session },
@@ -161,13 +163,14 @@ export default function ResetPasswordPage() {
           }
 
           try {
-            const { error: setErr } = await withTimeout(
+            const sessResult = await withTimeout(
               supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken,
               }),
               8000
-            );
+            ) as { error: any };
+            const setErr = sessResult?.error;
             if (setErr) {
               const {
                 data: { session },

@@ -128,10 +128,10 @@ export default function RegistrarEntradasPage() {
       const unique = Array.from(
         new Set(
           (data || [])
-            .map((r: any) => String(r.mercado || "").trim())
+            .map((r: { mercado: string | null }) => String(r.mercado || "").trim())
             .filter(Boolean)
         )
-      );
+      ) as string[];
       setSugestoesMercado(unique);
     } finally {
       setLoadingSugestoes(false);
@@ -329,7 +329,7 @@ export default function RegistrarEntradasPage() {
       }
 
       // Calcula banca atual (banca inicial + soma dos resultados)
-      const somaResultados = (entradasData || []).reduce((acc, entrada) => {
+      const somaResultados = (entradasData || []).reduce((acc: number, entrada: { valor_resultado: number | null }) => {
         if (entrada.valor_resultado !== null) {
           return acc + parseFloat(entrada.valor_resultado.toString());
         }

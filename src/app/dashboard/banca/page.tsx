@@ -250,7 +250,7 @@ export default function BancaPage() {
       }
 
       // Calcula banca atual (banca inicial + soma dos resultados)
-      const somaResultados = (entradasData || []).reduce((acc, entrada) => {
+      const somaResultados = (entradasData || []).reduce((acc: number, entrada: { valor_resultado: number | null }) => {
         if (entrada.valor_resultado !== null) {
           return acc + parseFloat(entrada.valor_resultado.toString());
         }

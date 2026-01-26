@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/contexts/ThemeContext";
 
-type FiltroPeriodo = 
+type FiltroPeriodo =
   | "hoje"
   | "ontem"
   | "7dias"
@@ -16,6 +16,11 @@ type FiltroPeriodo =
   | "60dias"
   | "90dias"
   | "personalizado";
+
+type Entrada = {
+  resultado: string;
+  valor_resultado: number | null;
+};
 
 const ADMIN_EMAIL = "duarte.schuck@icloud.com";
 
@@ -217,32 +222,32 @@ export default function DashboardHome() {
 
       // Greens e Reds de entradas simples
       const greensEntradas = entradasData?.filter(
-        (e) => e.resultado === "green"
+        (e: Entrada) => e.resultado === "green"
       ).length || 0;
       const redsEntradas = entradasData?.filter(
-        (e) => e.resultado === "red"
+        (e: Entrada) => e.resultado === "red"
       ).length || 0;
 
       // Greens e Reds de múltiplas
       const greensMultiplas = multiplasData.filter(
-        (m) => m.resultado === "green"
+        (m: Entrada) => m.resultado === "green"
       ).length;
       const redsMultiplas = multiplasData.filter(
-        (m) => m.resultado === "red"
+        (m: Entrada) => m.resultado === "red"
       ).length;
 
       setGreens(greensEntradas + greensMultiplas);
       setReds(redsEntradas + redsMultiplas);
 
       // Calcula banca atual (banca inicial + soma dos resultados de entradas + múltiplas)
-      const somaResultadosEntradas = entradasData?.reduce((acc, entrada) => {
+      const somaResultadosEntradas = entradasData?.reduce((acc: number, entrada: Entrada) => {
         if (entrada.valor_resultado !== null && entrada.valor_resultado !== undefined) {
           return acc + toNumber(entrada.valor_resultado);
         }
         return acc;
       }, 0) || 0;
 
-      const somaResultadosMultiplas = multiplasData.reduce((acc, multipla) => {
+      const somaResultadosMultiplas = multiplasData.reduce((acc: number, multipla: Entrada) => {
         if (multipla.valor_resultado !== null && multipla.valor_resultado !== undefined) {
           return acc + toNumber(multipla.valor_resultado);
         }

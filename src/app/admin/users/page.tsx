@@ -18,6 +18,19 @@ type UserWithPayment = {
 
 type FilterType = "all" | "paid" | "unpaid";
 
+type Profile = {
+  id: string;
+  email: string;
+  telefone: string | null;
+  created_at: string;
+};
+
+type PaymentRecord = {
+  email: string;
+  is_paid: boolean;
+  subscription_status: string | null;
+};
+
 const PAGE_SIZE = 50;
 
 export default function AdminUsersPage() {
@@ -140,7 +153,7 @@ export default function AdminUsersPage() {
       }
 
       // Buscar status de pagamento para cada usuário
-      const emails = profiles.map((p) => p.email.toLowerCase());
+      const emails = (profiles as Profile[]).map((p: Profile) => p.email.toLowerCase());
       const { data: payments, error: paymentsError } = await supabase
         .from("stripe_payments")
         .select("email, is_paid, subscription_status")
@@ -153,7 +166,7 @@ export default function AdminUsersPage() {
       // Mapear pagamentos por email
       const paymentMap = new Map<string, { is_paid: boolean; subscription_status: string | null }>();
       if (payments) {
-        for (const p of payments) {
+        for (const p of payments as PaymentRecord[]) {
           paymentMap.set(p.email.toLowerCase(), {
             is_paid: p.is_paid,
             subscription_status: p.subscription_status,
@@ -162,7 +175,7 @@ export default function AdminUsersPage() {
       }
 
       // Combinar profiles com pagamentos
-      const usersWithPayments: UserWithPayment[] = profiles.map((profile) => {
+      const usersWithPayments: UserWithPayment[] = (profiles as Profile[]).map((profile: Profile) => {
         const payment = paymentMap.get(profile.email.toLowerCase());
         return {
           id: profile.id,

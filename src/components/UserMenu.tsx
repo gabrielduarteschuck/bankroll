@@ -12,7 +12,7 @@ export default function UserMenu() {
 
   useEffect(() => {
     // Busca o usuário atual
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: { data: { user: User | null } }) => {
       setUser(user);
       setLoading(false);
     });
@@ -20,7 +20,7 @@ export default function UserMenu() {
     // Escuta mudanças na autenticação
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event: string, session: { user: User | null } | null) => {
       setUser(session?.user ?? null);
     });
 
