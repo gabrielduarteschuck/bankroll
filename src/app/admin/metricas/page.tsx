@@ -43,6 +43,22 @@ type SuggestionClick = {
   unique_users: number;
 };
 
+type UserDetail = {
+  user_id: string;
+  email: string;
+  created_at: string;
+  last_activity: string | null;
+  total_sessions: number;
+  total_page_views: number;
+  days_active: number;
+  total_entradas: number;
+  entradas_green: number;
+  entradas_red: number;
+  entradas_pendente: number;
+  taxa_green: number;
+  has_banca: boolean;
+};
+
 export default function AdminMetricasPage() {
   const router = useRouter();
   const { theme } = useTheme();
@@ -57,6 +73,8 @@ export default function AdminMetricasPage() {
   const [avgTimePages, setAvgTimePages] = useState<AvgTimePage[]>([]);
   const [retention, setRetention] = useState<Retention | null>(null);
   const [suggestionClicks, setSuggestionClicks] = useState<SuggestionClick[]>([]);
+  const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
+  const [showAllUsers, setShowAllUsers] = useState(false);
 
   const textPrimary = theme === "dark" ? "text-white" : "text-zinc-900";
   const textSecondary = theme === "dark" ? "text-zinc-400" : "text-zinc-600";
@@ -109,6 +127,7 @@ export default function AdminMetricasPage() {
           avgTimeRes,
           retentionRes,
           suggestionsRes,
+          usersRes,
         ] = await Promise.all([
           supabase.rpc("analytics_summary"),
           supabase.rpc("analytics_top_pages"),
@@ -116,6 +135,7 @@ export default function AdminMetricasPage() {
           supabase.rpc("analytics_avg_time_per_page"),
           supabase.rpc("analytics_retention_d1"),
           supabase.rpc("analytics_suggestion_clicks"),
+          supabase.rpc("analytics_users_detailed"),
         ]);
 
         if (summaryRes.data && summaryRes.data.length > 0) {
@@ -128,6 +148,7 @@ export default function AdminMetricasPage() {
           setRetention(retentionRes.data[0]);
         }
         if (suggestionsRes.data) setSuggestionClicks(suggestionsRes.data);
+        if (usersRes.data) setUserDetails(usersRes.data);
       } catch (error) {
         console.error("Erro ao carregar métricas:", error);
       } finally {
@@ -363,6 +384,122 @@ export default function AdminMetricasPage() {
                   ))
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Métricas por Usuário */}
+          <div className={`rounded-2xl border ${cardBorder} ${cardBg} overflow-hidden`}>
+            <div className={`px-4 py-3 border-b ${cardBorder} flex items-center justify-between`}>
+              <div>
+                <h3 className={`font-semibold ${textPrimary}`}>Métricas por Usuário</h3>
+                <p className={`text-xs ${textSecondary} mt-0.5`}>
+                  {userDetails.length} usuários cadastrados
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAllUsers(!showAllUsers)}
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                  theme === "dark"
+                    ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                }`}
+              >
+                {showAllUsers ? "Mostrar menos" : `Ver todos (${userDetails.length})`}
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className={`text-xs font-medium uppercase ${textSecondary} border-b ${cardBorder}`}>
+                    <th className="text-left px-4 py-3">Usuário</th>
+                    <th className="text-center px-3 py-3">Banca</th>
+                    <th className="text-center px-3 py-3">Sessões</th>
+                    <th className="text-center px-3 py-3">Views</th>
+                    <th className="text-center px-3 py-3">Dias Ativos</th>
+                    <th className="text-center px-3 py-3">Entradas</th>
+                    <th className="text-center px-3 py-3">Green</th>
+                    <th className="text-center px-3 py-3">Red</th>
+                    <th className="text-center px-3 py-3">Taxa</th>
+                    <th className="text-right px-4 py-3">Última Atividade</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${cardBorder}`}>
+                  {userDetails.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className={`px-4 py-8 text-center ${textSecondary}`}>
+                        Sem dados ainda
+                      </td>
+                    </tr>
+                  ) : (
+                    (showAllUsers ? userDetails : userDetails.slice(0, 10)).map((user) => (
+                      <tr key={user.user_id} className={`${theme === "dark" ? "hover:bg-zinc-800/50" : "hover:bg-zinc-50"}`}>
+                        <td className="px-4 py-3">
+                          <div className={`text-sm font-medium ${textPrimary}`}>
+                            {user.email}
+                          </div>
+                          <div className={`text-xs ${textSecondary}`}>
+                            Desde {new Date(user.created_at).toLocaleDateString("pt-BR")}
+                          </div>
+                        </td>
+                        <td className="text-center px-3 py-3">
+                          {user.has_banca ? (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-500">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-zinc-500/20 text-zinc-500">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </span>
+                          )}
+                        </td>
+                        <td className={`text-center px-3 py-3 text-sm font-medium ${textPrimary}`}>
+                          {user.total_sessions}
+                        </td>
+                        <td className={`text-center px-3 py-3 text-sm font-medium ${textPrimary}`}>
+                          {user.total_page_views}
+                        </td>
+                        <td className={`text-center px-3 py-3 text-sm font-medium ${textPrimary}`}>
+                          {user.days_active}
+                        </td>
+                        <td className={`text-center px-3 py-3 text-sm font-medium ${textPrimary}`}>
+                          {user.total_entradas}
+                        </td>
+                        <td className="text-center px-3 py-3 text-sm font-medium text-emerald-500">
+                          {user.entradas_green}
+                        </td>
+                        <td className="text-center px-3 py-3 text-sm font-medium text-red-500">
+                          {user.entradas_red}
+                        </td>
+                        <td className="text-center px-3 py-3">
+                          {user.total_entradas > 0 && (user.entradas_green + user.entradas_red) > 0 ? (
+                            <span className={`text-sm font-bold ${
+                              user.taxa_green >= 50 ? "text-emerald-500" : "text-red-500"
+                            }`}>
+                              {user.taxa_green}%
+                            </span>
+                          ) : (
+                            <span className={`text-sm ${textSecondary}`}>-</span>
+                          )}
+                        </td>
+                        <td className={`text-right px-4 py-3 text-xs ${textSecondary}`}>
+                          {user.last_activity
+                            ? new Date(user.last_activity).toLocaleDateString("pt-BR", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "Sem atividade"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </>

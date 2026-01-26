@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# AI tooling / local docs that may contain secrets
+CLAUDE.md
+
 # debug
 npm-debug.log*
 yarn-debug.log*

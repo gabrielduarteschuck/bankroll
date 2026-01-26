@@ -68,6 +68,50 @@ export async function middleware(req: NextRequest) {
         if (!paidErr && paid !== true) {
           return NextResponse.redirect(new URL(checkoutUrl, req.nextUrl.origin));
         }
+
+        // Verifica onboarding após confirmar pagamento
+        const { data: onboardingData, error: onboardingErr } = await supabase.rpc("get_onboarding_status");
+
+        if (!onboardingErr && onboardingData) {
+          // RPC retorna array ou objeto direto dependendo da versão
+          const status = Array.isArray(onboardingData) ? onboardingData[0] : onboardingData;
+
+          if (status && status.onboarding_completed === false) {
+            // Redireciona para o passo correto do onboarding
+            if (!status.has_banca) {
+              return NextResponse.redirect(new URL("/onboarding/banca", req.nextUrl.origin));
+            }
+            if (!status.has_entrada) {
+              return NextResponse.redirect(new URL("/onboarding/entrada", req.nextUrl.origin));
+            }
+            // Tem tudo mas não marcou completo - vai pro final
+            return NextResponse.redirect(new URL("/onboarding/final", req.nextUrl.origin));
+          }
+        }
+      } catch {
+        // se RPC não existir ainda, não bloqueia
+      }
+    }
+  }
+
+  // 1.2) Protege /onboarding: requer login + pagamento
+  if (pathname.startsWith("/onboarding") && !isLoggedIn) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  if (pathname.startsWith("/onboarding") && isLoggedIn) {
+    const adminEmails = getAdminEmails();
+    const userEmail = user?.email?.toLowerCase();
+    const isAdminEmail = !!userEmail && adminEmails.includes(userEmail);
+
+    if (!isAdminEmail) {
+      try {
+        const { data: paid, error: paidErr } = await supabase.rpc("has_paid_access");
+        if (!paidErr && paid !== true) {
+          return NextResponse.redirect(new URL(checkoutUrl, req.nextUrl.origin));
+        }
       } catch {
         // se RPC não existir ainda, não bloqueia
       }
@@ -105,5 +149,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/reset-password", "/"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/onboarding/:path*", "/reset-password", "/"],
 };
