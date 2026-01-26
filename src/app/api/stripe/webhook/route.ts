@@ -173,7 +173,8 @@ export async function POST(req: Request) {
       event.type === "customer.subscription.deleted"
     ) {
       const sub = event.data.object as Stripe.Subscription;
-      const subAny = sub as Record<string, unknown>;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const subAny = sub as any;
       const email = (await resolveCustomerEmail(stripe, sub.customer)) || null;
 
       log("SUBSCRIPTION_EVENT", {
@@ -190,7 +191,7 @@ export async function POST(req: Request) {
         const isPaid = event.type === "customer.subscription.deleted" ? false : isActive;
         const periodEnd =
           typeof subAny?.current_period_end === "number"
-            ? new Date((subAny.current_period_end as number) * 1000).toISOString()
+            ? new Date(subAny.current_period_end * 1000).toISOString()
             : null;
 
         await upsertByEmail(email, {
