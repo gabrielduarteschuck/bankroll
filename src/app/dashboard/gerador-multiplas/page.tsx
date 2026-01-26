@@ -100,6 +100,18 @@ export default function GeradorMultiplasPage() {
         </p>
       </div>
 
+      {/* Aviso de horário para usuários premium */}
+      <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
+        theme === "dark"
+          ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+          : "border-amber-200 bg-amber-50 text-amber-800"
+      }`}>
+        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span className="text-sm font-medium">Entradas da IA postadas a partir das 17:00</span>
+      </div>
+
       {loading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {[...Array(4)].map((_, i) => (
