@@ -81,6 +81,7 @@ export default function MinhasEntradasPage() {
   const [editingMultiplaId, setEditingMultiplaId] = useState<string | null>(null);
   const [editMultiplaResultado, setEditMultiplaResultado] = useState<"pendente" | "green" | "red">("pendente");
   const [paginaAtual, setPaginaAtual] = useState(1);
+  const [paginaMultiplas, setPaginaMultiplas] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -186,6 +187,7 @@ export default function MinhasEntradasPage() {
         : entradas;
       setEntradasFiltradas(base);
       setPaginaAtual(1);
+    setPaginaMultiplas(1);
       return;
     }
 
@@ -193,6 +195,7 @@ export default function MinhasEntradasPage() {
     if (!dateRange) {
       setEntradasFiltradas(entradas);
       setPaginaAtual(1);
+    setPaginaMultiplas(1);
       return;
     }
 
@@ -207,24 +210,31 @@ export default function MinhasEntradasPage() {
 
     setEntradasFiltradas(filtradas);
     setPaginaAtual(1);
+    setPaginaMultiplas(1);
   }
 
   // Filtra múltiplas usando useMemo para garantir reatividade
   const multiplasFiltradas = useMemo(() => {
-    if (filtroPeriodo === "todos") {
-      return multiplas;
+    let filtradas = [...multiplas];
+
+    // Filtro por período
+    if (filtroPeriodo !== "todos") {
+      const dateRange = getDateRange();
+      if (dateRange) {
+        filtradas = filtradas.filter((m) => {
+          const dataMultipla = new Date(m.created_at);
+          return dataMultipla >= new Date(dateRange.inicio) && dataMultipla <= new Date(dateRange.fim);
+        });
+      }
     }
 
-    const dateRange = getDateRange();
-    if (!dateRange) {
-      return multiplas;
+    // Filtro por favoritas
+    if (apenasFavoritas) {
+      filtradas = filtradas.filter((m) => m.favorita === true);
     }
 
-    return multiplas.filter((m) => {
-      const dataMultipla = new Date(m.created_at);
-      return dataMultipla >= new Date(dateRange.inicio) && dataMultipla <= new Date(dateRange.fim);
-    });
-  }, [multiplas, filtroPeriodo, dataInicio, dataFim]);
+    return filtradas;
+  }, [multiplas, filtroPeriodo, dataInicio, dataFim, apenasFavoritas]);
 
   async function toggleFavorita(entrada: Entrada) {
     try {
@@ -288,6 +298,14 @@ export default function MinhasEntradasPage() {
   const inicio = (paginaSegura - 1) * ITENS_POR_PAGINA;
   const fim = inicio + ITENS_POR_PAGINA;
   const entradasPaginadas = entradasFiltradas.slice(inicio, fim);
+
+  // Paginação para múltiplas
+  const MULTIPLAS_POR_PAGINA = 10;
+  const totalPaginasMultiplas = Math.max(1, Math.ceil(multiplasFiltradas.length / MULTIPLAS_POR_PAGINA));
+  const paginaMultiplasSegura = Math.min(Math.max(1, paginaMultiplas), totalPaginasMultiplas);
+  const inicioMultiplas = (paginaMultiplasSegura - 1) * MULTIPLAS_POR_PAGINA;
+  const fimMultiplas = inicioMultiplas + MULTIPLAS_POR_PAGINA;
+  const multiplasPaginadas = multiplasFiltradas.slice(inicioMultiplas, fimMultiplas);
 
   async function loadEntradas() {
     try {
@@ -764,10 +782,8 @@ export default function MinhasEntradasPage() {
 
           {(highlightMultiplaId
             ? multiplas.filter((m) => m.id === highlightMultiplaId)
-            : multiplasFiltradas
-          )
-            .slice(0, highlightMultiplaId ? 1 : 10)
-            .map((m) => {
+            : multiplasPaginadas
+          ).map((m) => {
               const items = multiplasItens[m.id] || [];
               const highlighted = highlightMultiplaId === m.id;
               return (
@@ -964,6 +980,37 @@ export default function MinhasEntradasPage() {
                 </div>
               );
             })}
+
+          {/* Paginação das Múltiplas */}
+          {totalPaginasMultiplas > 1 && !highlightMultiplaId && (
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <button
+                onClick={() => setPaginaMultiplas((p) => Math.max(1, p - 1))}
+                disabled={paginaMultiplasSegura === 1}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  paginaMultiplasSegura === 1
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                } ${theme === "dark" ? "bg-zinc-900 text-zinc-300" : "bg-white text-zinc-700 border border-zinc-200"}`}
+              >
+                Anterior
+              </button>
+              <div className={`text-xs ${textSecondary}`}>
+                {paginaMultiplasSegura} de {totalPaginasMultiplas}
+              </div>
+              <button
+                onClick={() => setPaginaMultiplas((p) => Math.min(totalPaginasMultiplas, p + 1))}
+                disabled={paginaMultiplasSegura === totalPaginasMultiplas}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  paginaMultiplasSegura === totalPaginasMultiplas
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                } ${theme === "dark" ? "bg-zinc-900 text-zinc-300" : "bg-white text-zinc-700 border border-zinc-200"}`}
+              >
+                Próximo
+              </button>
+            </div>
+          )}
         </div>
       )}
 
