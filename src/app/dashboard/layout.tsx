@@ -12,9 +12,11 @@ import { AnalyticsProvider } from "@/contexts/AnalyticsContext";
 function NavItem({
   href,
   label,
+  isPremium = false,
 }: {
   href: string;
   label: string;
+  isPremium?: boolean;
 }) {
   const pathname = usePathname();
   const isActive = pathname === href;
@@ -23,7 +25,7 @@ function NavItem({
   return (
     <Link
       href={href}
-      className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+      className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
         isActive
           ? theme === "dark"
             ? "bg-zinc-800 text-white"
@@ -33,7 +35,12 @@ function NavItem({
           : "text-zinc-700 hover:bg-zinc-50"
       }`}
     >
-      {label}
+      <span>{label}</span>
+      {isPremium && (
+        <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold rounded bg-gradient-to-r from-amber-500 to-orange-500 text-white uppercase tracking-wide">
+          Pro
+        </span>
+      )}
     </Link>
   );
 }
@@ -132,7 +139,8 @@ export default function DashboardLayout({
 
           <nav className="space-y-1 flex-1">
             <NavItem href="/dashboard" label="Painel" />
-            <NavItem href="/dashboard/sugestoes-ia" label="Sugestões da IA" />
+            <NavItem href="/dashboard/sugestoes-ia" label="Sugestões da IA" isPremium />
+            <NavItem href="/dashboard/gerador-multiplas" label="Gerador de Múltiplas" isPremium />
             <NavItem href="/dashboard/registrar-entradas/tipo" label="Registrar Entradas" />
             <NavItem href="/dashboard/minhas-entradas" label="Minhas Entradas" />
             <NavItem href="/dashboard/banca" label="Banca" />
@@ -179,7 +187,8 @@ export default function DashboardLayout({
 
           <nav className="space-y-1">
             <NavItem href="/dashboard" label="Painel" />
-            <NavItem href="/dashboard/sugestoes-ia" label="Sugestões da IA" />
+            <NavItem href="/dashboard/sugestoes-ia" label="Sugestões da IA" isPremium />
+            <NavItem href="/dashboard/gerador-multiplas" label="Gerador de Múltiplas" isPremium />
             <NavItem href="/dashboard/registrar-entradas/tipo" label="Registrar Entradas" />
             <NavItem href="/dashboard/minhas-entradas" label="Minhas Entradas" />
             <NavItem href="/dashboard/banca" label="Banca" />

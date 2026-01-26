@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/lib/supabaseClient";
 import { NBA_LOGOS } from "@/components/nba-logos";
+import PremiumPaywall from "@/components/PremiumPaywall";
 
 type AiSuggestion = {
   id: string;
@@ -39,6 +40,8 @@ export default function SugestoesIAPage() {
   const cardBorder = theme === "dark" ? "border-zinc-800" : "border-zinc-200";
 
   const [loading, setLoading] = useState(true);
+  const [checkingPremium, setCheckingPremium] = useState(true);
+  const [isPremium, setIsPremium] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<AiSuggestion[]>([]);
   const [voteAgg, setVoteAgg] = useState<Record<string, VoteAggRow>>({});
@@ -47,9 +50,29 @@ export default function SugestoesIAPage() {
 
   const ids = useMemo(() => items.map((x) => x.id), [items]);
 
+  // Verificar se usuário é premium
   useEffect(() => {
-    void load();
+    async function checkPremium() {
+      try {
+        const { data: paid } = await supabase.rpc("has_paid_access");
+        setIsPremium(paid === true);
+      } catch {
+        setIsPremium(false);
+      } finally {
+        setCheckingPremium(false);
+      }
+    }
+    checkPremium();
   }, []);
+
+  useEffect(() => {
+    if (!checkingPremium && isPremium) {
+      void load();
+    } else if (!checkingPremium && !isPremium) {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkingPremium, isPremium]);
 
   async function load() {
     setLoading(true);
@@ -168,6 +191,22 @@ export default function SugestoesIAPage() {
     } finally {
       setVotingId(null);
     }
+  }
+
+  // Loading premium check
+  if (checkingPremium) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className={`w-8 h-8 border-2 rounded-full animate-spin ${
+          theme === "dark" ? "border-zinc-700 border-t-white" : "border-zinc-200 border-t-zinc-900"
+        }`} />
+      </div>
+    );
+  }
+
+  // Paywall para não-premium
+  if (!isPremium) {
+    return <PremiumPaywall feature="sugestoes" />;
   }
 
   return (

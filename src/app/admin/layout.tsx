@@ -41,6 +41,7 @@ export default function AdminLayout({
   const { theme } = useTheme();
   const pathname = usePathname();
   const isAnalisesActive = pathname === "/admin/analises-ia" || pathname === "/admin";
+  const isMultiplasActive = pathname === "/admin/multiplas";
 
   return (
     <div className={`min-h-screen ${
@@ -94,6 +95,32 @@ export default function AdminLayout({
                     : "text-zinc-500"
               }`}>
                 Painel de publicação
+              </div>
+            </Link>
+
+            <Link
+              href="/admin/multiplas"
+              className={`block rounded-2xl border px-4 py-3 text-sm font-semibold transition-all ${
+                isMultiplasActive
+                  ? theme === "dark"
+                    ? "border-amber-500/40 bg-amber-900/20 text-amber-200 shadow-lg shadow-amber-500/10"
+                    : "border-amber-300 bg-amber-50 text-amber-800 shadow-md"
+                  : theme === "dark"
+                    ? "border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800"
+                    : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+              }`}
+            >
+              Gerador de Múltiplas
+              <div className={`mt-1 text-xs font-medium ${
+                isMultiplasActive
+                  ? theme === "dark"
+                    ? "text-amber-200/80"
+                    : "text-amber-700"
+                  : theme === "dark"
+                    ? "text-zinc-400"
+                    : "text-zinc-500"
+              }`}>
+                Múltiplas Premium
               </div>
             </Link>
 

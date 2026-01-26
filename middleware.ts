@@ -36,10 +36,6 @@ export async function middleware(req: NextRequest) {
 
   const isLoggedIn = !!user;
 
-  const checkoutUrl =
-    process.env.NEXT_PUBLIC_STRIPE_CHECKOUT_URL ||
-    "https://buy.stripe.com/9B6aEW637aPiaWPd5AaMU00";
-
   // 0) Se o Supabase cair no "/" durante recovery (type=recovery na query),
   // redireciona para /reset-password preservando a query.
   if (pathname === "/" && req.nextUrl.searchParams.get("type") === "recovery") {
@@ -55,67 +51,37 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 1.1) Protege /dashboard: com login mas sem pagamento → manda pro checkout
+  // 1.1) Dashboard agora é FREEMIUM - não redireciona mais pro checkout
+  // Apenas verifica onboarding para todos os usuários logados
   if (pathname.startsWith("/dashboard") && isLoggedIn) {
-    // Admin sempre passa (mesma whitelist já usada no /admin)
-    const adminEmails = getAdminEmails();
-    const userEmail = user?.email?.toLowerCase();
-    const isAdminEmail = !!userEmail && adminEmails.includes(userEmail);
+    try {
+      const { data: onboardingData, error: onboardingErr } = await supabase.rpc("get_onboarding_status");
 
-    if (!isAdminEmail) {
-      try {
-        const { data: paid, error: paidErr } = await supabase.rpc("has_paid_access");
-        if (!paidErr && paid !== true) {
-          return NextResponse.redirect(new URL(checkoutUrl, req.nextUrl.origin));
-        }
+      if (!onboardingErr && onboardingData) {
+        const status = Array.isArray(onboardingData) ? onboardingData[0] : onboardingData;
 
-        // Verifica onboarding após confirmar pagamento
-        const { data: onboardingData, error: onboardingErr } = await supabase.rpc("get_onboarding_status");
-
-        if (!onboardingErr && onboardingData) {
-          // RPC retorna array ou objeto direto dependendo da versão
-          const status = Array.isArray(onboardingData) ? onboardingData[0] : onboardingData;
-
-          if (status && status.onboarding_completed === false) {
-            // Redireciona para o passo correto do onboarding
-            if (!status.has_banca) {
-              return NextResponse.redirect(new URL("/onboarding/banca", req.nextUrl.origin));
-            }
-            if (!status.has_entrada) {
-              return NextResponse.redirect(new URL("/onboarding/entrada", req.nextUrl.origin));
-            }
-            // Tem tudo mas não marcou completo - vai pro final
-            return NextResponse.redirect(new URL("/onboarding/final", req.nextUrl.origin));
+        if (status && status.onboarding_completed === false) {
+          // Redireciona para o passo correto do onboarding
+          if (!status.has_banca) {
+            return NextResponse.redirect(new URL("/onboarding/banca", req.nextUrl.origin));
           }
+          if (!status.has_entrada) {
+            return NextResponse.redirect(new URL("/onboarding/entrada", req.nextUrl.origin));
+          }
+          // Tem tudo mas não marcou completo - vai pro final
+          return NextResponse.redirect(new URL("/onboarding/final", req.nextUrl.origin));
         }
-      } catch {
-        // se RPC não existir ainda, não bloqueia
       }
+    } catch {
+      // se RPC não existir ainda, não bloqueia
     }
   }
 
-  // 1.2) Protege /onboarding: requer login + pagamento
+  // 1.2) Protege /onboarding: requer apenas login (não mais pagamento)
   if (pathname.startsWith("/onboarding") && !isLoggedIn) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
-  }
-
-  if (pathname.startsWith("/onboarding") && isLoggedIn) {
-    const adminEmails = getAdminEmails();
-    const userEmail = user?.email?.toLowerCase();
-    const isAdminEmail = !!userEmail && adminEmails.includes(userEmail);
-
-    if (!isAdminEmail) {
-      try {
-        const { data: paid, error: paidErr } = await supabase.rpc("has_paid_access");
-        if (!paidErr && paid !== true) {
-          return NextResponse.redirect(new URL(checkoutUrl, req.nextUrl.origin));
-        }
-      } catch {
-        // se RPC não existir ainda, não bloqueia
-      }
-    }
   }
 
   // 2) Protege /admin: requer login + email na whitelist

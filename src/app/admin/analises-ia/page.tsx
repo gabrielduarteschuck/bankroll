@@ -54,6 +54,9 @@ export default function AdminAnalisesIAPage() {
   const [odd, setOdd] = useState<string>("");
   const [confianca, setConfianca] = useState<number>(70);
   const [linkBilhete, setLinkBilhete] = useState<string>("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const teamOptions = useMemo(() => {
     return Object.keys(NBA_LOGOS).sort((a, b) => a.localeCompare(b));
@@ -120,6 +123,44 @@ export default function AdminAnalisesIAPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  async function uploadImage(file: File): Promise<string | null> {
+    try {
+      setUploadingImage(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `sugestoes/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Erro no upload:', uploadError);
+        return null;
+      }
+
+      const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+      return data.publicUrl;
+    } catch (err) {
+      console.error('Erro no upload:', err);
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
   const validationError = useMemo(() => {
     if (!esporte) return "Selecione um esporte.";
     if (!mercado.trim()) return "Informe o mercado.";
@@ -151,6 +192,12 @@ export default function AdminAnalisesIAPage() {
       const homeTeamClean = String(homeTeam || "").trim().toLowerCase();
       const awayTeamClean = String(awayTeam || "").trim().toLowerCase();
 
+      // Upload da imagem se houver
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile);
+      }
+
       const payload: any = {
         esporte,
         mercado: mercado.trim(),
@@ -160,6 +207,7 @@ export default function AdminAnalisesIAPage() {
         link_bilhete_final: linkBilhete.trim()
           ? normalizeAffiliateLink(linkBilhete.trim())
           : null,
+        image_url: imageUrl,
         // Campos opcionais (sem depender de APIs externas)
         league: "NBA",
         game_id: null,
@@ -191,6 +239,8 @@ export default function AdminAnalisesIAPage() {
       setOdd("");
       setConfianca(70);
       setLinkBilhete("");
+      setImageFile(null);
+      setImagePreview(null);
     } finally {
       setLoading(false);
     }
@@ -379,6 +429,35 @@ export default function AdminAnalisesIAPage() {
               </div>
 
               <div className="md:col-span-2">
+                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Imagem (opcional)</label>
+                <div className="flex items-start gap-4">
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className={`w-full p-3 rounded-xl border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-emerald-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-500 file:text-white hover:file:bg-emerald-600`}
+                    />
+                    <div className={`mt-2 text-xs ${textTertiary}`}>
+                      Opcional. Formatos: JPG, PNG, WebP. Max: 5MB.
+                    </div>
+                  </div>
+                  {imagePreview && (
+                    <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-zinc-700">
+                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => { setImageFile(null); setImagePreview(null); }}
+                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
                 <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Link do bilhete compartilhado</label>
                 <input
                   value={linkBilhete}
@@ -424,14 +503,14 @@ export default function AdminAnalisesIAPage() {
 
               <button
                 type="submit"
-                disabled={loading || !!validationError}
+                disabled={loading || uploadingImage || !!validationError}
                 className={`h-12 px-6 rounded-xl font-semibold cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
                   theme === "dark"
                     ? "bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/20"
                     : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
                 }`}
               >
-                {loading ? "Publicando..." : "Publicar Análise"}
+                {uploadingImage ? "Enviando imagem..." : loading ? "Publicando..." : "Publicar Análise"}
               </button>
             </div>
           </form>
