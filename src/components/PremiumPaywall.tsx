@@ -10,7 +10,7 @@ export default function PremiumPaywall({ feature }: PremiumPaywallProps) {
   const { theme } = useTheme();
 
   const checkoutUrl = process.env.NEXT_PUBLIC_STRIPE_CHECKOUT_URL ||
-    "https://buy.stripe.com/9B6aEW637aPiaWPd5AaMU00";
+    "https://buy.stripe.com/3cI5kC77baPigh99ToaMU01";
 
   const textPrimary = theme === "dark" ? "text-white" : "text-zinc-900";
   const textSecondary = theme === "dark" ? "text-zinc-400" : "text-zinc-600";
