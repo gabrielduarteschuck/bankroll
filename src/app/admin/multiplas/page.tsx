@@ -17,6 +17,8 @@ type Multipla = {
   descricao: string;
   odd_total: number;
   quantidade_jogos: number;
+  confianca_percent: number;
+  status: 'ABERTO' | 'FECHADO';
   image_url: string | null;
   link_bilhete: string | null;
   is_published: boolean;
@@ -46,6 +48,8 @@ export default function AdminMultiplasPage() {
   const [descricao, setDescricao] = useState("");
   const [oddTotal, setOddTotal] = useState("");
   const [quantidadeJogos, setQuantidadeJogos] = useState("");
+  const [confiancaPercent, setConfiancaPercent] = useState("50");
+  const [status, setStatus] = useState<'ABERTO' | 'FECHADO'>('ABERTO');
   const [linkBilhete, setLinkBilhete] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -176,6 +180,8 @@ export default function AdminMultiplasPage() {
     setDescricao("");
     setOddTotal("");
     setQuantidadeJogos("");
+    setConfiancaPercent("50");
+    setStatus('ABERTO');
     setLinkBilhete("");
     setImageFile(null);
     setImagePreview(null);
@@ -202,6 +208,12 @@ export default function AdminMultiplasPage() {
       return;
     }
 
+    const confNum = parseInt(confiancaPercent, 10);
+    if (!Number.isFinite(confNum) || confNum < 0 || confNum > 100) {
+      setToast({ type: "error", message: "Confiança deve ser entre 0 e 100." });
+      return;
+    }
+
     setLoading(true);
     try {
       const {
@@ -224,6 +236,8 @@ export default function AdminMultiplasPage() {
         descricao: descricao.trim(),
         odd_total: oddNum,
         quantidade_jogos: qtdNum,
+        confianca_percent: confNum,
+        status: status,
         link_bilhete: linkBilhete.trim()
           ? normalizeAffiliateLink(linkBilhete.trim())
           : null,
@@ -347,6 +361,8 @@ export default function AdminMultiplasPage() {
     setDescricao(m.descricao || "");
     setOddTotal(m.odd_total.toString());
     setQuantidadeJogos(m.quantidade_jogos.toString());
+    setConfiancaPercent((m.confianca_percent || 50).toString());
+    setStatus(m.status || 'ABERTO');
     setLinkBilhete(m.link_bilhete || "");
     setImagePreview(m.image_url);
     setImageFile(null);
@@ -461,6 +477,30 @@ export default function AdminMultiplasPage() {
                   placeholder="Ex: 3"
                   className={`w-full p-3 rounded-xl border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-amber-500`}
                 />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>% Chance de Green</label>
+                <input
+                  value={confiancaPercent}
+                  onChange={(e) => setConfiancaPercent(e.target.value.replace(/\D/g, ""))}
+                  inputMode="numeric"
+                  placeholder="Ex: 75"
+                  className={`w-full p-3 rounded-xl border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                />
+                <div className={`mt-1 text-xs ${textTertiary}`}>0 a 100%</div>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as 'ABERTO' | 'FECHADO')}
+                  className={`w-full p-3 rounded-xl border ${inputBorder} ${inputBg} ${inputText} focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                >
+                  <option value="ABERTO">ABERTO</option>
+                  <option value="FECHADO">FECHADO</option>
+                </select>
               </div>
 
               <div className="md:col-span-2">
@@ -606,6 +646,16 @@ export default function AdminMultiplasPage() {
                     </span>
                     <span className={`text-xs ${textTertiary}`}>
                       Jogos: <span className={`font-semibold ${textPrimary}`}>{m.quantidade_jogos}</span>
+                    </span>
+                    <span className={`text-xs ${textTertiary}`}>
+                      Confiança: <span className={`font-semibold ${textPrimary}`}>{m.confianca_percent || 50}%</span>
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      m.status === 'FECHADO'
+                        ? "bg-red-500/20 text-red-400"
+                        : "bg-emerald-500/20 text-emerald-400"
+                    }`}>
+                      {m.status || 'ABERTO'}
                     </span>
                     <span className={`text-xs ${textTertiary}`}>
                       {new Date(m.created_at).toLocaleDateString("pt-BR")}
