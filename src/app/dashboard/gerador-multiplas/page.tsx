@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/lib/supabaseClient";
 import PremiumPaywall from "@/components/PremiumPaywall";
@@ -20,13 +20,6 @@ type Multipla = {
   created_at: string;
 };
 
-type VoteAggRow = {
-  multipla_id: string;
-  likes: number;
-  dislikes: number;
-  my_vote: 1 | -1 | null;
-};
-
 export default function GeradorMultiplasPage() {
   const { theme } = useTheme();
 
@@ -39,11 +32,6 @@ export default function GeradorMultiplasPage() {
   const [checkingPremium, setCheckingPremium] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
   const [items, setItems] = useState<Multipla[]>([]);
-  const [voteAgg, setVoteAgg] = useState<Record<string, VoteAggRow>>({});
-  const [votingId, setVotingId] = useState<string | null>(null);
-  const [votesUnavailable, setVotesUnavailable] = useState(false);
-
-  const ids = useMemo(() => items.map((x) => x.id), [items]);
 
   // Verificar se usuario e premium
   useEffect(() => {
@@ -71,7 +59,6 @@ export default function GeradorMultiplasPage() {
 
   async function loadMultiplas() {
     setLoading(true);
-    setVotesUnavailable(false);
     try {
       const { data } = await supabase
         .from("multiplas")
@@ -85,80 +72,6 @@ export default function GeradorMultiplasPage() {
       setItems([]);
     } finally {
       setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (ids.length === 0) {
-      setVoteAgg({});
-      return;
-    }
-    void loadVotes(ids);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ids.join("|")]);
-
-  async function loadVotes(multiplaIds: string[]) {
-    try {
-      const { data, error: aggErr } = await supabase.rpc("multiplas_votes_aggregate", {
-        multipla_ids: multiplaIds,
-      });
-
-      if (aggErr) {
-        setVotesUnavailable(true);
-        setVoteAgg({});
-        return;
-      }
-
-      const rows = (data || []) as VoteAggRow[];
-      const map: Record<string, VoteAggRow> = {};
-      for (const r of rows) map[String(r.multipla_id)] = r;
-      setVoteAgg(map);
-    } catch {
-      setVotesUnavailable(true);
-      setVoteAgg({});
-    }
-  }
-
-  function getAgg(id: string): VoteAggRow {
-    return (
-      voteAgg[id] || {
-        multipla_id: id,
-        likes: 0,
-        dislikes: 0,
-        my_vote: null,
-      }
-    );
-  }
-
-  async function vote(multiplaId: string, v: 1 | -1) {
-    if (votingId) return;
-    setVotingId(multiplaId);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const current = getAgg(multiplaId).my_vote;
-      if (current === v) {
-        // toggle off -> remove voto
-        await supabase
-          .from("multiplas_votes")
-          .delete()
-          .eq("multipla_id", multiplaId)
-          .eq("user_id", user.id);
-      } else {
-        await supabase
-          .from("multiplas_votes")
-          .upsert(
-            { multipla_id: multiplaId, user_id: user.id, vote: v },
-            { onConflict: "multipla_id,user_id" }
-          );
-      }
-
-      await loadVotes(ids);
-    } finally {
-      setVotingId(null);
     }
   }
 
@@ -211,10 +124,7 @@ export default function GeradorMultiplasPage() {
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {items.map((m, index) => {
-            const agg = getAgg(m.id);
             const hasLink = !!(m.link_bilhete && String(m.link_bilhete).trim());
-            const isLike = agg.my_vote === 1;
-            const isDislike = agg.my_vote === -1;
             const entradaNum = String(index + 1).padStart(2, '0');
             const confianca = m.confianca_percent || 50;
             const isAberto = m.status !== 'FECHADO';
@@ -356,8 +266,8 @@ export default function GeradorMultiplasPage() {
                     </div>
                   )}
 
-                  {/* ACOES: Botao + Votos */}
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-1">
+                  {/* ACOES: Botao */}
+                  <div className="pt-1">
                     <button
                       type="button"
                       disabled={!hasLink}
@@ -374,55 +284,7 @@ export default function GeradorMultiplasPage() {
                     >
                       Abrir Bilhete
                     </button>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={votesUnavailable || votingId === m.id}
-                        onClick={() => vote(m.id, 1)}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                          isLike
-                            ? theme === "dark"
-                              ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-300"
-                              : "border-emerald-400 bg-emerald-50 text-emerald-700"
-                            : theme === "dark"
-                              ? "border-zinc-700 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-700/50"
-                              : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50"
-                        }`}
-                        aria-label="Green"
-                      >
-                        <span className="text-emerald-500">●</span>
-                        <span>GREEN</span>
-                        <span className="tabular-nums opacity-70">{agg.likes}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={votesUnavailable || votingId === m.id}
-                        onClick={() => vote(m.id, -1)}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                          isDislike
-                            ? theme === "dark"
-                              ? "border-red-500/50 bg-red-500/15 text-red-300"
-                              : "border-red-400 bg-red-50 text-red-700"
-                            : theme === "dark"
-                              ? "border-zinc-700 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-700/50"
-                              : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50"
-                        }`}
-                        aria-label="Red"
-                      >
-                        <span className="text-red-500">●</span>
-                        <span>RED</span>
-                        <span className="tabular-nums opacity-70">{agg.dislikes}</span>
-                      </button>
-                    </div>
                   </div>
-
-                  {votesUnavailable && (
-                    <p className={`text-xs ${textTertiary}`}>
-                      Votacao indisponivel (aplique a migration de votos).
-                    </p>
-                  )}
                 </div>
               </div>
             );
