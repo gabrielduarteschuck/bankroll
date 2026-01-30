@@ -63,6 +63,12 @@ export default function RegistrarEntradasPage() {
   const [loading, setLoading] = useState(false);
   const [loadingBanca, setLoadingBanca] = useState(true);
 
+  // Toast de feedback
+  const [toast, setToast] = useState<{
+    show: boolean;
+    bancaNova: number;
+  } | null>(null);
+
   // Classes de tema
   const textPrimary = theme === "dark" ? "text-white" : "text-zinc-900";
   const textSecondary = theme === "dark" ? "text-zinc-400" : "text-zinc-600";
@@ -583,7 +589,13 @@ export default function RegistrarEntradasPage() {
         }
       }
 
-      // Limpa o formulário ANTES de mostrar o alert
+      // Calcula nova banca (banca atual + resultado da entrada)
+      const bancaNova = (bancaAtual || 0) + (valorResultadoFinal || 0);
+
+      // Atualiza o estado da banca atual
+      setBancaAtual(bancaNova);
+
+      // Limpa o formulário
       setStakeSelecionada("");
       setStakeCustomizada("");
       setOdd("");
@@ -596,28 +608,13 @@ export default function RegistrarEntradasPage() {
       setValorApostado(0);
       setValorResultado(0);
 
-      alert(
-        `✅ Entrada registrada com sucesso!\n\n` +
-        `Esporte: ${esporteFinal}\n` +
-        (mercadoFinal ? `Mercado: ${mercadoFinal}\n` : "") +
-        (observacoesFinal ? `Descrição: ${observacoesFinal}\n` : "") +
-        `Unidades: ${percentStake} un\n` +
-        `Valor Apostado: R$ ${valorApostado.toLocaleString("pt-BR", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}\n` +
-        `Odd: ${oddValue.toFixed(2)}\n` +
-        `Resultado: ${
-          resultado === "pendente" ? "Pendente" : resultado === "green" ? "Green" : "Red"
-        }\n` +
-        (resultado === "pendente"
-          ? "\n"
-          : `Valor Resultado: R$ ${valorResultado >= 0 ? "+" : ""}${valorResultado.toLocaleString("pt-BR", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}\n\n`) +
-        `Acesse "Minhas Entradas" para ver todas as suas entradas.`
-      );
+      // Mostra toast de sucesso
+      setToast({ show: true, bancaNova });
+
+      // Auto-hide após 5 segundos
+      setTimeout(() => {
+        setToast(null);
+      }, 5000);
     } catch (error) {
       console.error("Erro ao registrar entrada:", error);
       alert("Erro ao registrar entrada");
@@ -1291,6 +1288,74 @@ export default function RegistrarEntradasPage() {
           </form>
         </div>
       </div>
+
+      {/* Toast de sucesso */}
+      {toast?.show && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4"
+          style={{
+            animation: "slideUp 0.3s ease-out"
+          }}
+        >
+          <style>{`
+            @keyframes slideUp {
+              from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+              }
+              to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+              }
+            }
+          `}</style>
+          <div
+            className={`rounded-2xl border shadow-lg p-4 ${
+              theme === "dark"
+                ? "bg-zinc-900 border-zinc-700"
+                : "bg-white border-zinc-200"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`font-semibold ${textPrimary}`}>
+                  Entrada registrada!
+                </p>
+                <p className={`text-sm mt-1 ${textSecondary}`}>
+                  Sua banca atual agora é:
+                </p>
+                <p className={`text-lg font-bold mt-1 ${
+                  theme === "dark" ? "text-green-400" : "text-green-600"
+                }`}>
+                  R$ {toast.bancaNova.toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setToast(null)}
+                className={`flex-shrink-0 p-1 rounded-lg transition-colors cursor-pointer ${
+                  theme === "dark"
+                    ? "hover:bg-zinc-800 text-zinc-400"
+                    : "hover:bg-zinc-100 text-zinc-500"
+                }`}
+                aria-label="Fechar"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalMercadoOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

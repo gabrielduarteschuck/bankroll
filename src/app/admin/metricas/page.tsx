@@ -11,6 +11,9 @@ type Summary = {
   users_onboarding_completed: number;
   users_with_banca: number;
   users_with_entrada: number;
+  users_with_5plus_entradas: number;
+  users_daily_active: number;
+  first_entrada_rate: number;
   total_page_views: number;
   total_sessions: number;
   avg_pages_per_session: number;
@@ -35,7 +38,8 @@ type AvgTimePage = {
   total_views: number;
 };
 
-type Retention = {
+type RetentionPeriod = {
+  period: string;
   total_users: number;
   returned_users: number;
   retention_rate: number;
@@ -57,7 +61,11 @@ type UserDetail = {
   entradas_pendente: number;
   taxa_green: number;
   has_banca: boolean;
+  total_time_seconds: number;
+  activity_score: number;
 };
+
+const USERS_PER_PAGE = 50;
 
 export default function AdminMetricasPage() {
   const router = useRouter();
@@ -71,10 +79,10 @@ export default function AdminMetricasPage() {
   const [topPages, setTopPages] = useState<TopPage[]>([]);
   const [dropoffPages, setDropoffPages] = useState<DropoffPage[]>([]);
   const [avgTimePages, setAvgTimePages] = useState<AvgTimePage[]>([]);
-  const [retention, setRetention] = useState<Retention | null>(null);
+  const [retentionData, setRetentionData] = useState<RetentionPeriod[]>([]);
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
-  const [showAllUsers, setShowAllUsers] = useState(false);
-  const [userFilter, setUserFilter] = useState<"all" | "paid" | "free" | "onboarded" | "not_onboarded">("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [userFilter, setUserFilter] = useState<"all" | "paid" | "free" | "onboarded" | "not_onboarded" | "5plus_entradas">("all");
   const [searchEmail, setSearchEmail] = useState("");
 
   const textPrimary = theme === "dark" ? "text-white" : "text-zinc-900";
@@ -133,7 +141,7 @@ export default function AdminMetricasPage() {
           supabase.rpc("analytics_top_pages"),
           supabase.rpc("analytics_dropoff_pages"),
           supabase.rpc("analytics_avg_time_per_page"),
-          supabase.rpc("analytics_retention_d1"),
+          supabase.rpc("analytics_retention_detailed"),
           supabase.rpc("analytics_users_detailed"),
         ]);
 
@@ -143,9 +151,7 @@ export default function AdminMetricasPage() {
         if (topPagesRes.data) setTopPages(topPagesRes.data);
         if (dropoffRes.data) setDropoffPages(dropoffRes.data);
         if (avgTimeRes.data) setAvgTimePages(avgTimeRes.data);
-        if (retentionRes.data && retentionRes.data.length > 0) {
-          setRetention(retentionRes.data[0]);
-        }
+        if (retentionRes.data) setRetentionData(retentionRes.data);
         if (usersRes.data) setUserDetails(usersRes.data);
       } catch (error) {
         console.error("Erro ao carregar métricas:", error);
@@ -176,7 +182,10 @@ export default function AdminMetricasPage() {
     if (seconds < 60) return `${Math.round(seconds)}s`;
     const mins = Math.floor(seconds / 60);
     const secs = Math.round(seconds % 60);
-    return `${mins}m ${secs}s`;
+    if (mins < 60) return `${mins}m ${secs}s`;
+    const hours = Math.floor(mins / 60);
+    const remainMins = mins % 60;
+    return `${hours}h ${remainMins}m`;
   }
 
   function calcPercent(value: number, total: number): string {
@@ -191,9 +200,22 @@ export default function AdminMetricasPage() {
       (userFilter === "paid" && user.is_paid) ||
       (userFilter === "free" && !user.is_paid) ||
       (userFilter === "onboarded" && user.onboarding_completed) ||
-      (userFilter === "not_onboarded" && !user.onboarding_completed);
+      (userFilter === "not_onboarded" && !user.onboarding_completed) ||
+      (userFilter === "5plus_entradas" && user.total_entradas >= 5);
     return matchesSearch && matchesFilter;
   });
+
+  // Paginação
+  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * USERS_PER_PAGE,
+    currentPage * USERS_PER_PAGE
+  );
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [userFilter, searchEmail]);
 
   if (checking) {
     return (
@@ -316,10 +338,26 @@ export default function AdminMetricasPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* 5+ Entradas */}
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-sm font-medium ${textPrimary}`}>5+ Entradas (Power Users)</span>
+                    <span className="text-sm font-bold text-pink-500">{summary?.users_with_5plus_entradas || 0}</span>
+                  </div>
+                  <div className={`h-10 rounded-lg ${theme === "dark" ? "bg-zinc-800" : "bg-zinc-100"} overflow-hidden`}>
+                    <div
+                      className="h-full bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg flex items-center justify-center transition-all"
+                      style={{ width: `${calcPercent(summary?.users_with_5plus_entradas || 0, summary?.total_users || 1)}%`, minWidth: summary?.users_with_5plus_entradas ? "50px" : "0" }}
+                    >
+                      <span className="text-xs font-bold text-white">{calcPercent(summary?.users_with_5plus_entradas || 0, summary?.total_users || 1)}%</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Conversion Rates */}
-              <div className={`mt-6 pt-6 border-t ${cardBorder} grid grid-cols-2 md:grid-cols-4 gap-4`}>
+              <div className={`mt-6 pt-6 border-t ${cardBorder} grid grid-cols-2 md:grid-cols-5 gap-4`}>
                 <div className="text-center">
                   <div className={`text-2xl font-bold text-emerald-500`}>
                     {calcPercent(summary?.users_paid || 0, summary?.total_users || 1)}%
@@ -340,16 +378,22 @@ export default function AdminMetricasPage() {
                 </div>
                 <div className="text-center">
                   <div className={`text-2xl font-bold text-amber-500`}>
-                    {calcPercent(summary?.users_with_entrada || 0, summary?.users_with_banca || 1)}%
+                    {summary?.first_entrada_rate || 0}%
                   </div>
-                  <div className={`text-xs ${textSecondary}`}>Banca → Entrada</div>
+                  <div className={`text-xs ${textSecondary}`}>% 1ª Entrada</div>
+                </div>
+                <div className="text-center">
+                  <div className={`text-2xl font-bold text-pink-500`}>
+                    {calcPercent(summary?.users_with_5plus_entradas || 0, summary?.users_with_entrada || 1)}%
+                  </div>
+                  <div className={`text-xs ${textSecondary}`}>Entrada → 5+ Entradas</div>
                 </div>
               </div>
             </div>
           </section>
 
           {/* ============================================ */}
-          {/* SEÇÃO 2: ENGAJAMENTO */}
+          {/* SEÇÃO 2: ENGAJAMENTO E RETENÇÃO */}
           {/* ============================================ */}
           <section>
             <div className="flex items-center gap-2 mb-4">
@@ -358,10 +402,10 @@ export default function AdminMetricasPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <h2 className={`text-lg font-semibold ${textPrimary}`}>Engajamento</h2>
+              <h2 className={`text-lg font-semibold ${textPrimary}`}>Engajamento & Retenção</h2>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
               <div className={`rounded-2xl border p-4 ${cardBorder} ${cardBg}`}>
                 <div className={`text-xs font-medium uppercase ${textSecondary}`}>Ativos Hoje</div>
                 <div className={`text-3xl font-bold mt-2 text-cyan-500`}>
@@ -377,12 +421,12 @@ export default function AdminMetricasPage() {
               </div>
 
               <div className={`rounded-2xl border p-4 ${cardBorder} ${cardBg}`}>
-                <div className={`text-xs font-medium uppercase ${textSecondary}`}>Retenção D1</div>
-                <div className={`text-3xl font-bold mt-2 text-purple-500`}>
-                  {retention?.retention_rate || 0}%
+                <div className={`text-xs font-medium uppercase ${textSecondary}`}>Uso Diário</div>
+                <div className={`text-3xl font-bold mt-2 text-orange-500`}>
+                  {summary?.users_daily_active || 0}
                 </div>
                 <div className={`text-xs mt-1 ${textSecondary}`}>
-                  {retention?.returned_users || 0}/{retention?.total_users || 0}
+                  Voltam em &lt;24h
                 </div>
               </div>
 
@@ -405,6 +449,29 @@ export default function AdminMetricasPage() {
                 <div className={`text-3xl font-bold mt-2 ${textPrimary}`}>
                   {summary?.avg_pages_per_session || 0}
                 </div>
+              </div>
+            </div>
+
+            {/* Retenção D1, D7, D30 */}
+            <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-6`}>
+              <h3 className={`font-semibold ${textPrimary} mb-4`}>Retenção de Usuários</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {retentionData.map((r) => (
+                  <div key={r.period} className={`rounded-xl border ${cardBorder} p-4 text-center`}>
+                    <div className={`text-xs font-medium uppercase ${textSecondary} mb-2`}>
+                      Retenção {r.period}
+                    </div>
+                    <div className={`text-4xl font-bold ${
+                      r.retention_rate >= 30 ? "text-emerald-500" :
+                      r.retention_rate >= 15 ? "text-amber-500" : "text-red-500"
+                    }`}>
+                      {r.retention_rate}%
+                    </div>
+                    <div className={`text-xs mt-2 ${textSecondary}`}>
+                      {r.returned_users} de {r.total_users} voltaram
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </section>
@@ -524,6 +591,7 @@ export default function AdminMetricasPage() {
                 </svg>
               </div>
               <h2 className={`text-lg font-semibold ${textPrimary}`}>Usuários Detalhados</h2>
+              <span className={`text-xs ${textSecondary}`}>(ordenados por atividade)</span>
             </div>
 
             <div className={`rounded-2xl border ${cardBorder} ${cardBg} overflow-hidden`}>
@@ -543,8 +611,8 @@ export default function AdminMetricasPage() {
                     { key: "all", label: "Todos", count: userDetails.length },
                     { key: "paid", label: "Pagos", count: userDetails.filter((u) => u.is_paid).length },
                     { key: "free", label: "Free", count: userDetails.filter((u) => !u.is_paid).length },
+                    { key: "5plus_entradas", label: "5+ Entradas", count: userDetails.filter((u) => u.total_entradas >= 5).length },
                     { key: "onboarded", label: "Onboarded", count: userDetails.filter((u) => u.onboarding_completed).length },
-                    { key: "not_onboarded", label: "Não Onboarded", count: userDetails.filter((u) => !u.onboarding_completed).length },
                   ].map((filter) => (
                     <button
                       key={filter.key}
@@ -561,18 +629,29 @@ export default function AdminMetricasPage() {
                 </div>
               </div>
 
-              {/* Info */}
+              {/* Info + Paginação */}
               <div className={`px-4 py-2 border-b ${cardBorder} flex items-center justify-between`}>
                 <span className={`text-xs ${textSecondary}`}>
-                  Mostrando {showAllUsers ? filteredUsers.length : Math.min(15, filteredUsers.length)} de {filteredUsers.length} usuários
+                  Mostrando {paginatedUsers.length} de {filteredUsers.length} usuários (página {currentPage} de {totalPages || 1})
                 </span>
-                {filteredUsers.length > 15 && (
-                  <button
-                    onClick={() => setShowAllUsers(!showAllUsers)}
-                    className={`text-xs font-medium text-blue-500 hover:underline`}
-                  >
-                    {showAllUsers ? "Mostrar menos" : "Ver todos"}
-                  </button>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${inputBg} ${textSecondary}`}
+                    >
+                      Anterior
+                    </button>
+                    <span className={`text-xs ${textSecondary}`}>{currentPage} / {totalPages}</span>
+                    <button
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${inputBg} ${textSecondary}`}
+                    >
+                      Próxima
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -583,9 +662,10 @@ export default function AdminMetricasPage() {
                     <tr className={`text-xs font-medium uppercase ${textSecondary} border-b ${cardBorder}`}>
                       <th className="text-left px-4 py-3">Usuário</th>
                       <th className="text-center px-3 py-3">Status</th>
-                      <th className="text-center px-3 py-3">Onboarding</th>
+                      <th className="text-center px-3 py-3">Score</th>
                       <th className="text-center px-3 py-3">Sessões</th>
                       <th className="text-center px-3 py-3">Views</th>
+                      <th className="text-center px-3 py-3">Tempo</th>
                       <th className="text-center px-3 py-3">Entradas</th>
                       <th className="text-center px-3 py-3">Green/Red</th>
                       <th className="text-center px-3 py-3">Taxa</th>
@@ -593,21 +673,28 @@ export default function AdminMetricasPage() {
                     </tr>
                   </thead>
                   <tbody className={`divide-y ${cardBorder}`}>
-                    {filteredUsers.length === 0 ? (
+                    {paginatedUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className={`px-4 py-8 text-center ${textSecondary}`}>
+                        <td colSpan={10} className={`px-4 py-8 text-center ${textSecondary}`}>
                           Nenhum usuário encontrado
                         </td>
                       </tr>
                     ) : (
-                      (showAllUsers ? filteredUsers : filteredUsers.slice(0, 15)).map((user) => (
+                      paginatedUsers.map((user, index) => (
                         <tr key={user.user_id} className={`${theme === "dark" ? "hover:bg-zinc-800/50" : "hover:bg-zinc-50"}`}>
                           <td className="px-4 py-3">
-                            <div className={`text-sm font-medium ${textPrimary}`}>
-                              {user.email}
-                            </div>
-                            <div className={`text-xs ${textSecondary}`}>
-                              {new Date(user.created_at).toLocaleDateString("pt-BR")}
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-bold ${textSecondary} w-6`}>
+                                #{(currentPage - 1) * USERS_PER_PAGE + index + 1}
+                              </span>
+                              <div>
+                                <div className={`text-sm font-medium ${textPrimary}`}>
+                                  {user.email}
+                                </div>
+                                <div className={`text-xs ${textSecondary}`}>
+                                  {new Date(user.created_at).toLocaleDateString("pt-BR")}
+                                </div>
+                              </div>
                             </div>
                           </td>
                           <td className="text-center px-3 py-3">
@@ -620,25 +707,22 @@ export default function AdminMetricasPage() {
                             </span>
                           </td>
                           <td className="text-center px-3 py-3">
-                            {user.onboarding_completed ? (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/20 text-blue-500">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20 text-amber-500">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                              </span>
-                            )}
+                            <span className={`text-sm font-bold ${
+                              user.activity_score >= 100 ? "text-emerald-500" :
+                              user.activity_score >= 50 ? "text-blue-500" :
+                              user.activity_score >= 10 ? "text-amber-500" : textSecondary
+                            }`}>
+                              {Math.round(user.activity_score)}
+                            </span>
                           </td>
                           <td className={`text-center px-3 py-3 text-sm font-medium ${textPrimary}`}>
                             {user.total_sessions}
                           </td>
                           <td className={`text-center px-3 py-3 text-sm font-medium ${textPrimary}`}>
                             {user.total_page_views}
+                          </td>
+                          <td className={`text-center px-3 py-3 text-sm ${textSecondary}`}>
+                            {formatTime(user.total_time_seconds)}
                           </td>
                           <td className={`text-center px-3 py-3 text-sm font-medium ${textPrimary}`}>
                             {user.total_entradas}
@@ -675,6 +759,43 @@ export default function AdminMetricasPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Paginação inferior */}
+              {totalPages > 1 && (
+                <div className={`px-4 py-3 border-t ${cardBorder} flex items-center justify-center gap-2`}>
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${inputBg} ${textSecondary}`}
+                  >
+                    Primeira
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${inputBg} ${textSecondary}`}
+                  >
+                    Anterior
+                  </button>
+                  <span className={`px-4 py-1.5 text-sm font-medium ${textPrimary}`}>
+                    {currentPage} de {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${inputBg} ${textSecondary}`}
+                  >
+                    Próxima
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${inputBg} ${textSecondary}`}
+                  >
+                    Última
+                  </button>
+                </div>
+              )}
             </div>
           </section>
         </>
