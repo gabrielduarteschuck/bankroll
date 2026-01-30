@@ -886,19 +886,19 @@ export default function RegistrarEntradasPage() {
                 className={`p-4 rounded-lg border ${
                   theme === "dark"
                     ? "bg-blue-900/20 border-blue-800"
-                    : "bg-blue-50 border-blue-200"
+                    : "bg-blue-50 border-blue-300"
                 }`}
               >
-                <div className="text-xs mb-1 text-blue-600 dark:text-blue-200">
+                <div className={`text-xs mb-1 ${theme === "dark" ? "text-blue-200" : "text-blue-700"}`}>
                   Valor Apostado
                 </div>
-                <div className="text-xl font-semibold text-blue-700 dark:text-blue-100">
+                <div className={`text-xl font-semibold ${theme === "dark" ? "text-blue-100" : "text-blue-800"}`}>
                   R$ {valorApostado.toLocaleString("pt-BR", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </div>
-                <div className="text-xs mt-1 text-blue-500 dark:text-blue-200/80">
+                <div className={`text-xs mt-1 ${theme === "dark" ? "text-blue-200/80" : "text-blue-600"}`}>
                   Calculado automaticamente baseado na banca e unidades
                 </div>
               </div>
@@ -923,7 +923,7 @@ export default function RegistrarEntradasPage() {
                   const value = e.target.value.replace(/[^\d,.-]/g, "");
                   setOdd(value);
                 }}
-                className={`w-full p-3 rounded-lg border bg-white text-zinc-900 placeholder-zinc-400 border-zinc-300 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent`}
+                className={`w-full p-3 rounded-lg border ${inputBorder} ${inputBg} ${inputText} placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent`}
                 required
               />
             </div>
