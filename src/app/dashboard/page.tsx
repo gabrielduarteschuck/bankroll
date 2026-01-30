@@ -24,9 +24,12 @@ type Entrada = {
 
 const ADMIN_EMAIL = "duarte.schuck@icloud.com";
 
+const PROGRESS_TARGET = 5; // Meta de entradas para gamificação
+
 export default function DashboardHome() {
   const router = useRouter();
   const [totalEntradas, setTotalEntradas] = useState(0);
+  const [totalEntradasHistorico, setTotalEntradasHistorico] = useState(0); // Total sem filtro de período
   const [greens, setGreens] = useState(0);
   const [reds, setReds] = useState(0);
   const [bancaInicial, setBancaInicial] = useState(0);
@@ -184,7 +187,44 @@ export default function DashboardHome() {
       // Calcula range de datas
       const { inicio, fim } = getDateRange();
 
-      // Busca entradas com filtro de data
+      // Busca TODAS as entradas (sem filtro de data) para calcular a banca atual correta
+      const { data: todasEntradasData } = await supabase
+        .from("entradas")
+        .select("valor_resultado")
+        .eq("user_id", user.id);
+
+      const { data: todasMultiplasData } = await supabase
+        .from("apostas_multiplas")
+        .select("valor_resultado")
+        .eq("user_id", user.id);
+
+      // Calcula banca atual com TODAS as entradas (histórico completo)
+      const somaTodasEntradas = todasEntradasData?.reduce((acc: number, entrada: any) => {
+        if (entrada.valor_resultado !== null && entrada.valor_resultado !== undefined) {
+          return acc + toNumber(entrada.valor_resultado);
+        }
+        return acc;
+      }, 0) || 0;
+
+      const somaTodasMultiplas = todasMultiplasData?.reduce((acc: number, multipla: any) => {
+        if (multipla.valor_resultado !== null && multipla.valor_resultado !== undefined) {
+          return acc + toNumber(multipla.valor_resultado);
+        }
+        return acc;
+      }, 0) || 0;
+
+      const somaTotalHistorico = somaTodasEntradas + somaTodasMultiplas;
+
+      // Conta o total de entradas histórico (para gamificação/progresso)
+      const countEntradasHistorico = (todasEntradasData?.length || 0) + (todasMultiplasData?.length || 0);
+      setTotalEntradasHistorico(countEntradasHistorico);
+
+      if (bancaData) {
+        const novaBanca = bancaInicialNum + somaTotalHistorico;
+        setBancaAtual(novaBanca);
+      }
+
+      // Busca entradas com filtro de data (para estatísticas do período)
       const query = supabase
         .from("entradas")
         .select("*")
@@ -215,12 +255,12 @@ export default function DashboardHome() {
         multiplasData = mData;
       }
 
-      // Combina entradas + múltiplas para estatísticas
+      // Combina entradas + múltiplas para estatísticas do PERÍODO
       const entradasCount = entradasData?.length || 0;
       const multiplasCount = multiplasData.length;
       setTotalEntradas(entradasCount + multiplasCount);
 
-      // Greens e Reds de entradas simples
+      // Greens e Reds de entradas simples (período filtrado)
       const greensEntradas = entradasData?.filter(
         (e: Entrada) => e.resultado === "green"
       ).length || 0;
@@ -228,7 +268,7 @@ export default function DashboardHome() {
         (e: Entrada) => e.resultado === "red"
       ).length || 0;
 
-      // Greens e Reds de múltiplas
+      // Greens e Reds de múltiplas (período filtrado)
       const greensMultiplas = multiplasData.filter(
         (m: Entrada) => m.resultado === "green"
       ).length;
@@ -239,7 +279,7 @@ export default function DashboardHome() {
       setGreens(greensEntradas + greensMultiplas);
       setReds(redsEntradas + redsMultiplas);
 
-      // Calcula banca atual (banca inicial + soma dos resultados de entradas + múltiplas)
+      // Calcula lucro líquido do PERÍODO (com filtro de data)
       const somaResultadosEntradas = entradasData?.reduce((acc: number, entrada: Entrada) => {
         if (entrada.valor_resultado !== null && entrada.valor_resultado !== undefined) {
           return acc + toNumber(entrada.valor_resultado);
@@ -257,14 +297,9 @@ export default function DashboardHome() {
       const somaResultados = somaResultadosEntradas + somaResultadosMultiplas;
       setLucroLiquido(somaResultados);
 
-      if (bancaData) {
-        const novaBanca = bancaInicialNum + somaResultados;
-        setBancaAtual(novaBanca);
-      }
-
-      // Calcula lucro sobre a banca
+      // Calcula % lucro sobre a banca (usa o histórico total, não o período filtrado)
       if (bancaInicialNum > 0) {
-        const lucro = (somaResultados / bancaInicialNum) * 100;
+        const lucro = (somaTotalHistorico / bancaInicialNum) * 100;
         setLucroBanca(lucro);
       }
     } catch (error) {
@@ -313,7 +348,7 @@ export default function DashboardHome() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Painel</h1>
+          <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Dashboard</h1>
           <p className={`text-sm ${textSecondary}`}>
             Visão geral das suas métricas de trading
           </p>
@@ -350,6 +385,66 @@ export default function DashboardHome() {
           </button>
         )}
       </div>
+
+      {/* Card de Progresso de Entradas (gamificação leve) */}
+      {totalEntradasHistorico < PROGRESS_TARGET ? (
+        <div className={`rounded-xl border ${cardBorder} ${cardBg} p-4`}>
+          <div className="flex items-center gap-4">
+            <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
+              theme === "dark" ? "bg-emerald-900/30" : "bg-emerald-50"
+            }`}>
+              <svg className={`w-6 h-6 ${theme === "dark" ? "text-emerald-400" : "text-emerald-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-sm font-semibold ${textPrimary}`}>
+                  Registre todas as entradas
+                </span>
+                <span className={`text-sm font-bold ${theme === "dark" ? "text-emerald-400" : "text-emerald-600"}`}>
+                  {totalEntradasHistorico} / {PROGRESS_TARGET}
+                </span>
+              </div>
+              <div className={`h-2 rounded-full ${theme === "dark" ? "bg-zinc-800" : "bg-zinc-200"} overflow-hidden`}>
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min((totalEntradasHistorico / PROGRESS_TARGET) * 100, 100)}%` }}
+                />
+              </div>
+              <p className={`text-xs ${textSecondary} mt-2`}>
+                {totalEntradasHistorico === 0
+                  ? "Comece registrando sua primeira entrada para acompanhar seu progresso."
+                  : `Faltam ${PROGRESS_TARGET - totalEntradasHistorico} entradas para completar sua primeira meta.`}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : totalEntradasHistorico === PROGRESS_TARGET ? (
+        <div className={`rounded-xl border p-4 ${
+          theme === "dark"
+            ? "border-emerald-700/50 bg-emerald-900/20"
+            : "border-emerald-200 bg-emerald-50"
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+              theme === "dark" ? "bg-emerald-800/50" : "bg-emerald-100"
+            }`}>
+              <svg className={`w-5 h-5 ${theme === "dark" ? "text-emerald-300" : "text-emerald-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <p className={`text-sm font-semibold ${theme === "dark" ? "text-emerald-200" : "text-emerald-900"}`}>
+                Parabéns! Você atingiu {PROGRESS_TARGET} entradas registradas.
+              </p>
+              <p className={`text-xs ${theme === "dark" ? "text-emerald-300/80" : "text-emerald-700"}`}>
+                Você está registrando como um apostador consistente. Continue assim!
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Filtro (uma opção) */}
       <div className={`rounded-xl border ${cardBorder} ${cardBg} p-4`}>
