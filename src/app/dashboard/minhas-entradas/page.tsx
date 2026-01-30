@@ -688,47 +688,49 @@ export default function MinhasEntradasPage() {
         </div>
       </div>
 
-      {/* Filtro (compacto) */}
-      <div className={`rounded-xl border ${cardBorder} ${cardBg} p-4`}>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className={`text-sm font-medium ${textSecondary}`}>Período</span>
-          <select
-            value={filtroPeriodo}
-            onChange={(e) => {
-              const value = e.target.value as FiltroPeriodo;
-              setFiltroPeriodo(value);
-              if (value !== "personalizado") {
-                setDataInicio("");
-                setDataFim("");
-              }
-            }}
-            className={`px-3 py-2 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
-          >
-            <option value="todos">Todos</option>
-            <option value="hoje">Hoje</option>
-            <option value="ontem">Ontem</option>
-            <option value="7dias">Últimos 7 dias</option>
-            <option value="15dias">Últimos 15 dias</option>
-            <option value="30dias">Últimos 30 dias</option>
-            <option value="60dias">Últimos 60 dias</option>
-            <option value="90dias">Últimos 90 dias</option>
-            <option value="personalizado">Personalizado</option>
-          </select>
+      {/* Filtro (compacto e responsivo) */}
+      <div className={`rounded-xl border ${cardBorder} ${cardBg} p-3`}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className={`text-xs font-medium ${textSecondary} shrink-0`}>Período</span>
+            <select
+              value={filtroPeriodo}
+              onChange={(e) => {
+                const value = e.target.value as FiltroPeriodo;
+                setFiltroPeriodo(value);
+                if (value !== "personalizado") {
+                  setDataInicio("");
+                  setDataFim("");
+                }
+              }}
+              className={`flex-1 min-w-0 px-2 py-1.5 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-xs focus:outline-none focus:ring-2 focus:ring-zinc-500`}
+            >
+              <option value="todos">Todos</option>
+              <option value="hoje">Hoje</option>
+              <option value="ontem">Ontem</option>
+              <option value="7dias">7 dias</option>
+              <option value="15dias">15 dias</option>
+              <option value="30dias">30 dias</option>
+              <option value="60dias">60 dias</option>
+              <option value="90dias">90 dias</option>
+              <option value="personalizado">Custom</option>
+            </select>
+          </div>
 
           {filtroPeriodo === "personalizado" && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <input
                 type="date"
                 value={dataInicio}
                 onChange={(e) => setDataInicio(e.target.value)}
-                className={`px-3 py-2 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
+                className={`flex-1 min-w-0 px-2 py-1.5 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-xs focus:outline-none focus:ring-2 focus:ring-zinc-500`}
               />
-              <span className={textTertiary}>até</span>
+              <span className={`text-xs ${textTertiary}`}>-</span>
               <input
                 type="date"
                 value={dataFim}
                 onChange={(e) => setDataFim(e.target.value)}
-                className={`px-3 py-2 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500`}
+                className={`flex-1 min-w-0 px-2 py-1.5 rounded-lg border ${inputBorder} ${inputBg} ${inputText} text-xs focus:outline-none focus:ring-2 focus:ring-zinc-500`}
               />
             </div>
           )}
@@ -736,7 +738,7 @@ export default function MinhasEntradasPage() {
           <button
             type="button"
             onClick={() => setApenasFavoritas((v) => !v)}
-            className={`ml-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer border ${
+            className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border ${
               apenasFavoritas
                 ? theme === "dark"
                   ? "bg-amber-900/20 border-amber-800 text-amber-200"
@@ -749,7 +751,7 @@ export default function MinhasEntradasPage() {
           >
             <svg
               viewBox="0 0 24 24"
-              className={`h-4 w-4 ${apenasFavoritas ? "text-amber-500" : ""}`}
+              className={`h-3.5 w-3.5 ${apenasFavoritas ? "text-amber-500" : ""}`}
               fill={apenasFavoritas ? "currentColor" : "none"}
               stroke="currentColor"
               strokeWidth="2"
@@ -760,7 +762,8 @@ export default function MinhasEntradasPage() {
                 d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557L3.04 10.385a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
               />
             </svg>
-            Apenas favoritas
+            <span className="hidden sm:inline">Favoritas</span>
+            <span className="sm:hidden">Fav</span>
           </button>
         </div>
       </div>
@@ -1023,26 +1026,28 @@ export default function MinhasEntradasPage() {
           </div>
         </div>
       ) : entradasFiltradas.length === 0 ? (
-        <div className={`rounded-2xl border border-dashed ${cardBorder} ${cardBg} p-12 text-center`}>
-          <div className={textTertiary + " mb-2"}>Nenhuma entrada encontrada no período selecionado</div>
+        <div className={`rounded-2xl border border-dashed ${cardBorder} ${cardBg} p-8 text-center`}>
+          <div className={textTertiary + " mb-2"}>Nenhuma entrada encontrada no período</div>
           <div className={`text-sm ${textTertiary}`}>
             Tente selecionar outro período ou &quot;Todos&quot;
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          {entradasPaginadas.map((entrada) => (
+        <div className="space-y-2">
+          {entradasPaginadas.map((entrada, idx) => {
+            const entradaNumero = entradasFiltradas.length - inicio - idx;
+            return (
             <div
               key={entrada.id}
-              className={`rounded-2xl border ${cardBorder} ${cardBg} p-6 shadow-sm`}
+              className={`rounded-xl border ${cardBorder} ${cardBg} p-3 sm:p-4 shadow-sm`}
             >
               {editingId === entrada.id ? (
                 // Modo Edição
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
-                        Unidade (un)
+                        Unidade
                       </label>
                       <input
                         type="text"
@@ -1099,28 +1104,27 @@ export default function MinhasEntradasPage() {
                         />
                       )}
                     </div>
-
                     <div>
                       <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
-                        Mercado (opcional)
+                        Mercado
                       </label>
                       <input
                         type="text"
-                        placeholder="Ex: Ambas marcam, Over 2.5, Handicap..."
+                        placeholder="Ex: Over 2.5..."
                         value={editMercadoTexto}
                         onChange={(e) => setEditMercadoTexto(e.target.value)}
                         className={`w-full p-2 rounded border ${inputBorder} ${inputBg} text-sm ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
                       />
                     </div>
-                    <div className="md:col-span-2">
+                    <div className="col-span-2">
                       <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
-                        Descrição (opcional)
+                        Descrição
                       </label>
                       <textarea
-                        placeholder="Ex: Motivo da entrada, leitura do jogo, plano de gestão..."
+                        placeholder="Motivo da entrada..."
                         value={editObservacoes}
                         onChange={(e) => setEditObservacoes(e.target.value)}
-                        rows={3}
+                        rows={2}
                         className={`w-full p-2 rounded border ${inputBorder} ${inputBg} text-sm ${inputText} focus:outline-none focus:ring-2 focus:ring-zinc-500`}
                       />
                     </div>
@@ -1142,11 +1146,11 @@ export default function MinhasEntradasPage() {
                     </div>
                     <div>
                       <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
-                        Valor Resultado (R$)
+                        Valor Resultado
                       </label>
                       <input
                         type="text"
-                        placeholder="Deixe em branco para calcular automaticamente"
+                        placeholder="Auto"
                         value={editValorResultado}
                         onChange={(e) => {
                           const value = e.target.value.replace(/[^\d,.-]/g, "");
@@ -1160,9 +1164,9 @@ export default function MinhasEntradasPage() {
                     <button
                       onClick={() => saveEdit(entrada)}
                       disabled={saving}
-                      className={`px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-60 ${
-                        theme === "dark" 
-                          ? "bg-zinc-700 hover:bg-zinc-600" 
+                      className={`px-3 py-1.5 rounded-lg text-white text-xs font-medium disabled:opacity-60 ${
+                        theme === "dark"
+                          ? "bg-zinc-700 hover:bg-zinc-600"
                           : "bg-zinc-900 hover:bg-zinc-800"
                       }`}
                     >
@@ -1171,7 +1175,7 @@ export default function MinhasEntradasPage() {
                     <button
                       onClick={cancelEdit}
                       disabled={saving}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-60 ${
                         theme === "dark"
                           ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
                           : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
@@ -1182,131 +1186,105 @@ export default function MinhasEntradasPage() {
                   </div>
                 </div>
               ) : (
-                // Modo Visualização
-                <div>
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className={`text-xs ${textTertiary} mb-1`}>
-                        {formatDate(entrada.created_at)}
-                      </div>
-                      <div className={`text-sm font-medium ${textPrimary}`}>
-                        Esporte: {entrada.esporte || "—"}
-                      </div>
-                      {entrada.mercado ? (
-                        <div className={`text-xs ${textSecondary} mt-1`}>
-                          Mercado: {entrada.mercado}
-                        </div>
-                      ) : null}
-                      {entrada.observacoes ? (
-                        <div className={`text-xs ${textSecondary} mt-1`}>
-                          Descrição: {entrada.observacoes}
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleFavorita(entrada)}
-                        className={`px-3 py-1 rounded text-xs font-medium cursor-pointer transition-colors border ${
-                          entrada.favorita
-                            ? theme === "dark"
-                              ? "bg-amber-900/20 text-amber-200 hover:bg-amber-900/30 border-amber-800"
-                              : "bg-amber-50 text-amber-900 hover:bg-amber-100 border-amber-300"
-                            : theme === "dark"
-                            ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border-zinc-700"
-                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-zinc-200"
-                        }`}
-                        aria-label={entrada.favorita ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-4 w-4"
-                          fill={entrada.favorita ? "currentColor" : "none"}
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557L3.04 10.385a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => startEdit(entrada)}
-                        className={`px-3 py-1 rounded text-xs font-medium cursor-pointer transition-colors ${
-                          theme === "dark"
-                            ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
-                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-                        }`}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => deleteEntrada(entrada.id)}
-                        className={`px-3 py-1 rounded text-xs font-medium cursor-pointer transition-colors ${
-                          theme === "dark"
-                            ? "bg-red-900/20 text-red-400 hover:bg-red-900/30 border border-red-800"
-                            : "bg-red-100 text-red-700 hover:bg-red-200"
-                        }`}
-                      >
-                        Excluir
-                      </button>
-                    </div>
+                // Modo Visualização - Compacto
+                <div className="flex items-start gap-2 sm:gap-3">
+                  {/* Número da entrada */}
+                  <div className={`shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-xs sm:text-sm font-bold ${
+                    theme === "dark" ? "bg-zinc-800 text-zinc-400" : "bg-zinc-100 text-zinc-500"
+                  }`}>
+                    {entradaNumero}
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <div>
-                      <div className={`text-xs ${textTertiary} mb-1`}>Unidade</div>
-                      <div className={`text-sm font-medium ${textPrimary}`}>
-                        {entrada.stake_percent} un
+
+                  {/* Conteúdo principal */}
+                  <div className="flex-1 min-w-0">
+                    {/* Header: Esporte + Data + Ações */}
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div className="min-w-0">
+                        <div className={`text-sm font-semibold ${textPrimary} truncate`}>
+                          {entrada.esporte || "—"}
+                          {entrada.mercado ? <span className={`font-normal ${textSecondary}`}> • {entrada.mercado}</span> : null}
+                        </div>
+                        <div className={`text-[10px] sm:text-xs ${textTertiary}`}>
+                          {formatDate(entrada.created_at)}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleFavorita(entrada)}
+                          className={`p-1.5 rounded text-xs cursor-pointer transition-colors ${
+                            entrada.favorita
+                              ? theme === "dark"
+                                ? "text-amber-400"
+                                : "text-amber-500"
+                              : theme === "dark"
+                              ? "text-zinc-500 hover:text-zinc-300"
+                              : "text-zinc-400 hover:text-zinc-600"
+                          }`}
+                          aria-label={entrada.favorita ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                        >
+                          <svg viewBox="0 0 24 24" className="h-4 w-4" fill={entrada.favorita ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557L3.04 10.385a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => startEdit(entrada)}
+                          className={`p-1.5 rounded text-xs cursor-pointer transition-colors ${
+                            theme === "dark"
+                              ? "text-zinc-500 hover:text-zinc-300"
+                              : "text-zinc-400 hover:text-zinc-600"
+                          }`}
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => deleteEntrada(entrada.id)}
+                          className={`p-1.5 rounded text-xs cursor-pointer transition-colors ${
+                            theme === "dark"
+                              ? "text-zinc-500 hover:text-red-400"
+                              : "text-zinc-400 hover:text-red-500"
+                          }`}
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
-                    <div>
-                      <div className={`text-xs ${textTertiary} mb-1`}>Valor Apostado</div>
-                      <div className={`text-sm font-medium ${textPrimary}`}>
-                        R$ {entrada.valor_stake.toLocaleString("pt-BR", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+
+                    {/* Descrição (se houver) */}
+                    {entrada.observacoes && (
+                      <div className={`text-xs ${textSecondary} mb-1.5 line-clamp-1`}>
+                        {entrada.observacoes}
                       </div>
-                    </div>
-                    <div>
-                      <div className={`text-xs ${textTertiary} mb-1`}>Odd</div>
-                      <div className={`text-sm font-medium ${textPrimary}`}>
-                        {entrada.odd.toFixed(2)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className={`text-xs ${textTertiary} mb-1`}>Resultado</div>
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getResultadoColor(
-                          entrada.resultado
-                        )}`}
-                      >
+                    )}
+
+                    {/* Métricas em linha */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                      <span className={textSecondary}>
+                        <span className={textTertiary}>Un:</span> {entrada.stake_percent}
+                      </span>
+                      <span className={textSecondary}>
+                        <span className={textTertiary}>R$:</span> {entrada.valor_stake.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span className={textSecondary}>
+                        <span className={textTertiary}>Odd:</span> {entrada.odd.toFixed(2)}
+                      </span>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${getResultadoColor(entrada.resultado)}`}>
                         {getResultadoLabel(entrada.resultado)}
                       </span>
-                    </div>
-                    <div>
-                      <div className={`text-xs ${textTertiary} mb-1`}>Valor Resultado</div>
-                      <div
-                        className={`text-sm font-semibold ${
-                          (entrada.valor_resultado || 0) >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {(entrada.valor_resultado || 0) >= 0 ? "+" : ""}
-                        R$ {(entrada.valor_resultado || 0).toLocaleString("pt-BR", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </div>
+                      <span className={`font-semibold ${(entrada.valor_resultado || 0) >= 0 ? "text-green-500" : "text-red-500"}`}>
+                        {(entrada.valor_resultado || 0) >= 0 ? "+" : ""}R$ {(entrada.valor_resultado || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-          ))}
+          );
+          })}
 
           {/* Paginação (20 por página) */}
           {totalPaginas > 1 && (
