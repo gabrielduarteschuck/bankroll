@@ -350,7 +350,7 @@ export default function DashboardHome() {
         <div>
           <h1 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Dashboard</h1>
           <p className={`text-sm ${textSecondary}`}>
-            Visão geral das suas métricas de trading
+            Visão geral de suas métricas
           </p>
         </div>
         {isAdmin && (
