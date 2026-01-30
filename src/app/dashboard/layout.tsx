@@ -1,6 +1,5 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import DashboardNavCards from "@/components/DashboardNavCards";
 import FeedbackWidget from "@/components/FeedbackWidget";
@@ -13,10 +12,6 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { theme } = useTheme();
-  const pathname = usePathname();
-  const router = useRouter();
-
-  const isSubPage = pathname !== "/dashboard";
 
   return (
     <AnalyticsProvider>
@@ -36,33 +31,6 @@ export default function DashboardLayout({
         >
           <div className="p-4 md:p-8">
             <div className="mx-auto w-full max-w-6xl space-y-6">
-              {/* Botão Voltar - só aparece em sub-páginas */}
-              {isSubPage && (
-                <button
-                  onClick={() => router.back()}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                    theme === "dark"
-                      ? "text-zinc-400 hover:text-white hover:bg-zinc-800"
-                      : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
-                  }`}
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                  Voltar
-                </button>
-              )}
-
               {/* Navigation Cards - sempre visível em todas as páginas */}
               <DashboardNavCards />
 
