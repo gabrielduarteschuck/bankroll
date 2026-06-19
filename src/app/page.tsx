@@ -1,1 +1,1 @@
-export { default } from "./vsl/page";
+export { default } from "./canastra/page";

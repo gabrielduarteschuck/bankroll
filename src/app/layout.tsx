@@ -16,36 +16,34 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: {
-    default: "ProStake",
-    template: "%s | ProStake",
+    default: "Canastra Suja",
+    template: "%s | Canastra Suja",
   },
   description:
-    "ProStake — dashboard para registrar entradas, acompanhar banca, ROI e relatórios.",
-  applicationName: "ProStake",
+    "Canastra Suja online — jogue em dupla com a sua turma.",
+  applicationName: "Canastra Suja",
   robots: {
     index: true,
     follow: true,
   },
   openGraph: {
     type: "website",
-    siteName: "ProStake",
-    title: "ProStake",
-    description:
-      "ProStake — dashboard para registrar entradas, acompanhar banca, ROI e relatórios.",
+    siteName: "Canastra Suja",
+    title: "Canastra Suja",
+    description: "Canastra Suja online — jogue em dupla com a sua turma.",
     images: [
       {
         url: "/og.svg",
         width: 1200,
         height: 630,
-        alt: "ProStake",
+        alt: "Canastra Suja",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ProStake",
-    description:
-      "ProStake — dashboard para registrar entradas, acompanhar banca, ROI e relatórios.",
+    title: "Canastra Suja",
+    description: "Canastra Suja online — jogue em dupla com a sua turma.",
     images: ["/og.svg"],
   },
   icons: {
