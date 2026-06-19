@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createRoom, joinRoom } from "@/lib/canastra";
+import { createRoom, createSimRoom, joinRoom } from "@/lib/canastra";
 
 export default function CanastraHome() {
   const router = useRouter();
@@ -21,6 +21,18 @@ export default function CanastraHome() {
       router.push(`/canastra/sala/${res.room_code}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao criar mesa");
+      setLoading(false);
+    }
+  }
+
+  async function handleSim() {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await createSimRoom();
+      router.push(`/canastra/sala/${res.room_code}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao criar mesa simulada");
       setLoading(false);
     }
   }
@@ -63,6 +75,23 @@ export default function CanastraHome() {
               >
                 Entrar com código
               </button>
+
+              <div className="pt-2 mt-1 border-t border-white/10">
+                <button
+                  onClick={handleSim}
+                  disabled={loading}
+                  className="w-full rounded-xl bg-amber-500/90 hover:bg-amber-400 disabled:opacity-50 transition py-3 font-semibold text-amber-950"
+                >
+                  {loading ? "..." : "🤖 Mesa simulada (testar layout)"}
+                </button>
+                <p className="text-[11px] text-emerald-200/50 text-center mt-1.5">
+                  Abre uma mesa só sua, já com 3 bots jogando.
+                </p>
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-300 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>
+              )}
             </div>
           )}
 

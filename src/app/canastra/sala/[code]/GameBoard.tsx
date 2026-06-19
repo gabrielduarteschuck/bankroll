@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   addToMeld,
   bate,
+  botStep,
   type GameView,
   type Meld,
   discardCard,
@@ -87,6 +88,29 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
     const unsub = subscribeRoom(roomId, () => void load());
     return () => unsub();
   }, [load, roomId]);
+
+  // ---- driver dos bots: quando é a vez de um bot, joga sozinho ----
+  const botBusy = useRef(false);
+  useEffect(() => {
+    if (!view || view.status !== "playing" || view.phase === "over") return;
+    const turnP = view.players.find((p) => p.is_turn);
+    if (!turnP?.is_bot || botBusy.current) return;
+    botBusy.current = true;
+    const t = setTimeout(async () => {
+      try {
+        await botStep(roomId);
+      } catch {
+        /* ignora: próximo tick tenta de novo */
+      } finally {
+        botBusy.current = false;
+        await load();
+      }
+    }, 850);
+    return () => {
+      clearTimeout(t);
+      botBusy.current = false;
+    };
+  }, [view, roomId, load]);
 
   // dispara animações ao detectar mudanças de estado
   useEffect(() => {

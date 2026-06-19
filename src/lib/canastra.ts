@@ -73,6 +73,24 @@ export async function createRoom(name: string): Promise<JoinResult> {
   return row;
 }
 
+// Cria uma mesa de teste já cheia (você + 3 bots) e em andamento.
+export async function createSimRoom(): Promise<JoinResult> {
+  const { data, error } = await client().rpc("canastra_create_sim_room", {
+    p_token: getToken(),
+  });
+  if (error) throw new Error(error.message);
+  const row = (Array.isArray(data) ? data[0] : data) as JoinResult;
+  setStoredPlayerId(row.room_code, row.player_id);
+  return row;
+}
+
+// Executa a jogada do bot da vez (compra + descarte aleatório). true = jogou.
+export async function botStep(roomId: string): Promise<boolean> {
+  const { data, error } = await client().rpc("canastra_bot_step", { p_room_id: roomId });
+  if (error) throw new Error(error.message);
+  return !!data;
+}
+
 export async function joinRoom(code: string, name: string): Promise<JoinResult> {
   const { data, error } = await client().rpc("canastra_join_room", {
     p_code: code.toUpperCase().trim(),
@@ -123,6 +141,7 @@ export type PlayerView = {
   seat: number;
   team: number;
   is_host: boolean;
+  is_bot: boolean;
   hand_count: number;
   is_turn: boolean;
 };
