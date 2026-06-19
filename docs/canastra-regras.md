@@ -30,10 +30,33 @@ Sem login: o jogador entra na mesa por **código de sala + nome**.
   - **Ordem de compra do 3 vermelho**: por mão, começando pelo jogador **à direita de quem
     embaralhou**. Se ele tiver 3 vermelho, **compra outro 3 vermelho** também.
 
+## Baixar jogo e levar a mesa
+- **Mínimo para baixar** um jogo novo: **3 cartas**.
+- **Levar a mesa** = pegar **todas** as cartas do monte de descarte. Para levar, é
+  **obrigatório usar a carta do topo**: baixando um jogo novo que a contenha, **ou**
+  encaixando-a num jogo já baixado da dupla.
+- **Obrigada (150 escalonado):** uma dupla com **2000+ pontos** só "sai da obrigada"
+  (pode levar a mesa / abrir) se a **primeira baixada** somar **≥ 150 pontos**.
+  - Se o jogador **leva a mesa e não forma os 150**, devolve **todas** as cartas e o
+    alvo da dupla **sobe +30** (150 → 180 → 210 → …) até conseguir sair. Cabe ao jogador
+    calcular antes de tentar. O alvo volta a 150 quando a dupla finalmente sai da obrigada.
+- **Trancar a mesa:** **3 preto** e **coringa (2)** no topo do descarte **trancam** — o
+  próximo **não pode levar a mesa**. Destranca quando alguém descarta outra carta por cima.
+  (O coringa **pode** ser descartado.)
+
+## Fim por monte esgotado (morto)
+- Sempre mostrar **quantas cartas restam no monte de compra**.
+- Quando o **monte de compra acaba**, a rodada encerra. **Quem comprou a última carta
+  faz a última jogada** normalmente.
+- Em seguida, o próximo jogador **pode levar a mesa** se a carta do topo servir (mesmo sem
+  ter outra jogada). Se **não conseguir levar**, a rodada acaba e as **cartas na mão de
+  todos vão para o morto** (contam como **penalidade**, sem bônus de bater).
+
 ## Canastras
-- Sequência da canastra vai do **4 até o Ás (A)**.
+- Sequência da canastra vai do **4 até o Ás (A)**, **mesmo naipe**.
 - **Canastra = 7 cartas.**
 - Canastra de cartas **iguais** só é permitida para **Ás e 4**.
+- **Máximo 1 coringa (2) por jogo/canastra** (com coringa = suja, sem = limpa).
 - **Canastra suja** (com coringa) = **100 pontos**.
 - **Canastra limpa** (sem coringa) = **200 pontos**.
   - Cada **carta extra além das 7** numa canastra **limpa** = **+100 pontos** cada.
@@ -43,6 +66,9 @@ Sem login: o jogador entra na mesa por **código de sala + nome**.
 - **Bater** = baixar todas as cartas na mesa.
 - Para bater é **obrigatório a dupla ter pelo menos uma canastra** (suja ou limpa).
 - A rodada termina quando alguém bate; então **conta-se os pontos de cada dupla**.
+- **Captura:** ao bater, a dupla **captura as cartas da mão** da dupla adversária e soma
+  o valor delas **para si**. As cartas que a dupla adversária **já baixou** (jogos na mesa)
+  contam **pontos normais para ela**. O **3 preto na mão** continua **−100** para quem o segura.
 
 ## Pontuação das cartas (na contagem)
 | Carta | Pontos |

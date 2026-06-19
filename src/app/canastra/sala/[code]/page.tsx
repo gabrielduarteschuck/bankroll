@@ -7,10 +7,12 @@ import {
   fetchRoomByCode,
   getStoredPlayerId,
   joinRoom,
+  startGame,
   subscribeRoom,
   type Player,
   type Room,
 } from "@/lib/canastra";
+import GameBoard from "./GameBoard";
 
 export default function CanastraLobby() {
   const params = useParams<{ code: string }>();
@@ -133,6 +135,17 @@ export default function CanastraLobby() {
     );
   }
 
+  // ----- partida em andamento / encerrada: mostra a mesa -----
+  if (room && room.status !== "lobby") {
+    return (
+      <main className="min-h-screen px-3 py-5 bg-gradient-to-b from-emerald-950 via-green-900 to-emerald-950 text-white">
+        <div className="w-full max-w-md mx-auto">
+          <GameBoard roomId={room.id} />
+        </div>
+      </main>
+    );
+  }
+
   // ----- lobby (sou membro) -----
   const teamsDrawn = players.length === 4 && players.every((p) => p.seat != null);
   const seatsOrder = teamsDrawn
@@ -194,13 +207,21 @@ export default function CanastraLobby() {
           <p className="text-xs text-emerald-200/70 mt-1">
             Distribuição das cartas chega na <b>Etapa 2</b>.
           </p>
-          {players.find((p) => p.id === meId)?.is_host && (
+          {players.find((p) => p.id === meId)?.is_host ? (
             <button
-              disabled
-              className="mt-3 w-full rounded-xl bg-white/10 py-3 font-semibold text-white/40 cursor-not-allowed"
+              onClick={async () => {
+                try {
+                  await startGame();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Erro ao iniciar");
+                }
+              }}
+              className="mt-3 w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 font-semibold text-emerald-950"
             >
-              Iniciar partida (em breve)
+              Iniciar partida 🃏
             </button>
+          ) : (
+            <p className="mt-3 text-xs text-emerald-200/60">Aguardando o anfitrião iniciar…</p>
           )}
         </div>
       )}
