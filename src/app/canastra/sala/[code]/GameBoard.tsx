@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   addToMeld,
   bate,
@@ -53,6 +54,26 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ---- animações (cartas voando) ----
+  type Fly = { id: number; from: { x: number; y: number }; to: { x: number; y: number }; faceUp: boolean; card?: string | null };
+  const deckRef = useRef<HTMLDivElement | null>(null);
+  const lixoRef = useRef<HTMLDivElement | null>(null);
+  const seatRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const prevRef = useRef<GameView | null>(null);
+  const flyId = useRef(0);
+  const [flying, setFlying] = useState<Fly[]>([]);
+
+  const center = (el: HTMLElement | null) => {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  };
+  const addFly = useCallback((from: { x: number; y: number } | null, to: { x: number; y: number } | null, faceUp: boolean, card?: string | null) => {
+    if (!from || !to) return;
+    const id = ++flyId.current;
+    setFlying((f) => [...f, { id, from, to, faceUp, card }]);
+  }, []);
+
   const load = useCallback(async () => {
     try {
       setView(await getView());
@@ -66,6 +87,27 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
     const unsub = subscribeRoom(roomId, () => void load());
     return () => unsub();
   }, [load, roomId]);
+
+  // dispara animações ao detectar mudanças de estado
+  useEffect(() => {
+    const prev = prevRef.current;
+    if (prev && view && view.status !== "lobby") {
+      if (view.round !== prev.round && view.phase !== "over") {
+        // distribuição: leva de cartas do monte para cada cadeira
+        [1, 2, 3, 4, 1, 2, 3, 4].forEach((s, i) =>
+          setTimeout(() => addFly(center(deckRef.current), center(seatRefs.current[s]), false), i * 90)
+        );
+      } else {
+        if (view.stock_count < prev.stock_count) {
+          addFly(center(deckRef.current), center(seatRefs.current[prev.turn_seat]), false);
+        }
+        if (view.discard_count > prev.discard_count) {
+          addFly(center(seatRefs.current[prev.turn_seat]), center(lixoRef.current), true, view.discard_top);
+        }
+      }
+    }
+    prevRef.current = view;
+  }, [view, addFly]);
 
   function flash(msg: string) {
     setError(msg);
@@ -149,7 +191,7 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
       </div>
 
       {/* ===== Adversário do topo (parceiro fica embaixo? não: topo = parceiro) ===== */}
-      <div className="relative z-10 flex flex-col items-center mt-1">
+      <div className="relative z-10 flex flex-col items-center mt-1" ref={(el) => { seatRefs.current[topS] = el; }}>
         <SeatBlock p={pTop} compact />
         <CardBackRow n={pTop?.hand_count ?? 0} />
       </div>
@@ -159,7 +201,7 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
 
       {/* ===== Centro: jogadores laterais + MONTE + LIXO ===== */}
       <div className="relative z-10 flex-1 flex items-center justify-between px-1 min-h-0">
-        <div className="flex flex-col items-center gap-1 w-20 shrink-0">
+        <div className="flex flex-col items-center gap-1 w-20 shrink-0" ref={(el) => { seatRefs.current[leftS] = el; }}>
           <SeatBlock p={pLeft} side />
         </div>
 
@@ -167,7 +209,7 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
           {/* MONTE */}
           <div className="flex flex-col items-center">
             <span className="text-[10px] font-bold tracking-widest text-white/70 mb-0.5">MONTE</span>
-            <CardBack big />
+            <div ref={deckRef}><CardBack big /></div>
             <span className="mt-0.5 text-xs font-bold bg-black/40 rounded px-1.5">{view.stock_count}</span>
           </div>
           {/* LIXO */}
@@ -175,16 +217,18 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
             <span className="text-[10px] font-bold tracking-widest text-white/70 mb-0.5">
               LIXO {view.discard_locked && "🔒"}
             </span>
-            {view.discard_top ? (
-              <Card card={view.discard_top} big />
-            ) : (
-              <div className="w-12 h-16 rounded-lg border border-dashed border-white/30" />
-            )}
+            <div ref={lixoRef}>
+              {view.discard_top ? (
+                <Card card={view.discard_top} big />
+              ) : (
+                <div className="w-12 h-16 rounded-lg border border-dashed border-white/30" />
+              )}
+            </div>
             <span className="mt-0.5 text-xs font-bold bg-black/40 rounded px-1.5">{view.discard_count}</span>
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1 w-20 shrink-0">
+        <div className="flex flex-col items-center gap-1 w-20 shrink-0" ref={(el) => { seatRefs.current[rightS] = el; }}>
           <SeatBlock p={pRight} side />
         </div>
       </div>
@@ -234,7 +278,7 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
 
       {/* ===== Jogador local: bloco + ordenar + mão ===== */}
       <div className="relative z-10 flex items-end gap-2 px-2 pb-2">
-        <div className="flex flex-col items-center shrink-0">
+        <div className="flex flex-col items-center shrink-0" ref={(el) => { seatRefs.current[me] = el; }}>
           <SeatBlock p={view.players.find((p) => p.seat === me) ?? null} you />
         </div>
         <div className="flex flex-col gap-1 shrink-0">
@@ -272,6 +316,23 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
           {error}
         </div>
       )}
+
+      {/* ===== cartas voando (animações) ===== */}
+      <AnimatePresence>
+        {flying.map((f) => (
+          <motion.div
+            key={f.id}
+            initial={{ x: f.from.x - 24, y: f.from.y - 32, scale: 0.9, rotate: -8 }}
+            animate={{ x: f.to.x - 24, y: f.to.y - 32, scale: 1, rotate: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            onAnimationComplete={() => setFlying((a) => a.filter((z) => z.id !== f.id))}
+            className="fixed left-0 top-0 z-40 pointer-events-none"
+          >
+            {f.faceUp ? <Card card={f.card || ""} big /> : <CardBack big />}
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       {/* ===== fim de rodada / jogo ===== */}
       {phase === "over" && view.last_round && (
