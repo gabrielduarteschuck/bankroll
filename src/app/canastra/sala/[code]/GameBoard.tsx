@@ -112,33 +112,12 @@ export default function GameBoard({ roomId }: { roomId: string }) {
     );
   }
 
-  const others = view.players.filter((p) => p.player_id !== view.you.player_id);
-
   return (
     <div className="flex flex-col gap-3">
       <ScoreHeader view={view} />
 
-      {/* adversários / parceiro */}
-      <div className="grid grid-cols-3 gap-2">
-        {others.map((p) => (
-          <PlayerChip key={p.player_id} p={p} myTeam={view.you.team} />
-        ))}
-      </div>
-
-      {/* centro: monte + descarte */}
-      <div className="flex items-center justify-center gap-6 py-2">
-        <div className="text-center">
-          <div className="w-12 h-16 rounded-lg bg-gradient-to-br from-blue-800 to-blue-950 border border-white/20 flex items-center justify-center text-white/40 text-2xl">🂠</div>
-          <p className="text-xs mt-1 text-emerald-200/80">monte<br /><b className="text-white">{view.stock_count}</b></p>
-        </div>
-        <div className="text-center">
-          {view.discard_top ? <Card card={view.discard_top} /> : <div className="w-12 h-16 rounded-lg border border-dashed border-white/20" />}
-          <p className="text-xs mt-1 text-emerald-200/80">
-            descarte<br /><b className="text-white">{view.discard_count}</b>
-            {view.discard_locked && <span title="trancada"> 🔒</span>}
-          </p>
-        </div>
-      </div>
+      {/* mesa redonda com 4 cadeiras */}
+      <RoundTable view={view} />
 
       {/* jogos baixados */}
       <div className="grid grid-cols-2 gap-2">
@@ -253,14 +232,68 @@ function ScoreHeader({ view }: { view: GameView }) {
   );
 }
 
-function PlayerChip({ p, myTeam }: { p: PlayerView; myTeam: number }) {
+function RoundTable({ view }: { view: GameView }) {
+  const bySeat = (s: number) => view.players.find((p) => p.seat === s) ?? null;
+  const me = view.you.seat;
+  const leftS = (me % 4) + 1;        // próximo na ordem de jogo (à sua esquerda)
+  const topS = (leftS % 4) + 1;      // parceiro (em frente)
+  const rightS = (topS % 4) + 1;     // outro adversário (à sua direita)
+
   return (
-    <div className={`rounded-lg px-2 py-1.5 text-center border ${p.is_turn ? "bg-emerald-500/25 border-emerald-400/50" : "bg-black/25 border-white/10"}`}>
-      <p className="text-xs font-medium truncate">{p.name}</p>
-      <p className="text-[10px] text-emerald-200/60">
-        D{p.team}{p.team === myTeam ? " 🤝" : ""} · {p.hand_count}🂠
-      </p>
-      {p.is_turn && <p className="text-[9px] text-emerald-300 font-bold">JOGANDO</p>}
+    <div className="relative w-full h-[320px] select-none">
+      {/* tampo redondo (feltro + borda de madeira) */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[78%] h-[62%] rounded-[50%]
+                      bg-gradient-to-b from-emerald-600 to-emerald-800 border-[7px] border-amber-950/80
+                      shadow-[inset_0_0_34px_rgba(0,0,0,.55)]" />
+
+      {/* baralho de compra (num canto da mesa) */}
+      <div className="absolute left-[20%] top-[33%] text-center">
+        <FaceDown />
+        <p className="text-[9px] mt-0.5 text-emerald-50/90 leading-tight">comprar<br /><b className="text-white">{view.stock_count}</b></p>
+      </div>
+
+      {/* monte no meio — só a última carta */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+        {view.discard_top ? <Card card={view.discard_top} /> : <div className="w-12 h-16 rounded-lg border border-dashed border-white/25" />}
+        <p className="text-[9px] mt-0.5 text-emerald-50/90">
+          monte ({view.discard_count}){view.discard_locked && <span title="trancada"> 🔒</span>}
+        </p>
+      </div>
+
+      {/* cadeiras ao redor */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2"><Seat p={bySeat(topS)} myTeam={view.you.team} /></div>
+      <div className="absolute left-1 top-1/2 -translate-y-1/2"><Seat p={bySeat(leftS)} myTeam={view.you.team} /></div>
+      <div className="absolute right-1 top-1/2 -translate-y-1/2"><Seat p={bySeat(rightS)} myTeam={view.you.team} /></div>
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2"><Seat p={bySeat(me)} myTeam={view.you.team} you /></div>
+    </div>
+  );
+}
+
+function Seat({ p, myTeam, you }: { p: PlayerView | null; myTeam: number; you?: boolean }) {
+  if (!p) return <div className="w-16 h-16" />;
+  const turn = p.is_turn;
+  const init = p.name.trim().slice(0, 2).toUpperCase();
+  return (
+    <div className="flex flex-col items-center w-20">
+      {/* cadeira redonda */}
+      <div
+        className={`relative w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold border-4 transition
+          ${turn ? "border-amber-400 ring-4 ring-amber-400/30 animate-pulse" : "border-amber-950/70"}
+          ${p.team === myTeam ? "bg-emerald-600 text-white" : "bg-rose-800/90 text-white"}`}
+      >
+        {init}
+        <span className="absolute -bottom-1 -right-1 text-[10px] bg-black/75 text-white rounded-full px-1 leading-4">{p.hand_count}</span>
+      </div>
+      <span className="text-[11px] font-medium truncate max-w-[78px] mt-0.5">{p.name}{you ? " (você)" : ""}</span>
+      <span className="text-[9px] text-emerald-200/60">Dupla {p.team}{turn ? " · jogando" : ""}</span>
+    </div>
+  );
+}
+
+function FaceDown() {
+  return (
+    <div className="w-10 h-14 rounded-lg bg-gradient-to-br from-blue-800 to-blue-950 border-2 border-white/30 shadow-md flex items-center justify-center text-white/30 text-lg">
+      🂠
     </div>
   );
 }
