@@ -135,15 +135,9 @@ export default function CanastraLobby() {
     );
   }
 
-  // ----- partida em andamento / encerrada: mostra a mesa -----
+  // ----- partida em andamento / encerrada: mostra a mesa (tela cheia) -----
   if (room && room.status !== "lobby") {
-    return (
-      <main className="min-h-screen px-3 py-5 bg-gradient-to-b from-emerald-950 via-green-900 to-emerald-950 text-white">
-        <div className="w-full max-w-md mx-auto">
-          <GameBoard roomId={room.id} />
-        </div>
-      </main>
-    );
+    return <GameBoard roomId={room.id} code={code} />;
   }
 
   // ----- lobby (sou membro) -----
