@@ -43,15 +43,17 @@ function sortHand(cards: string[], mode: "none" | "rank" | "suit"): string[] {
   return arr;
 }
 
-// azul = dupla 1, vermelho = dupla 2
-const teamColor = (t: number) => (t === 1 ? "#3b82f6" : "#ef4444");
+// azul = dupla 1, vermelho = dupla 2 (cores do modelo GRUPO DUARTE)
+const teamColor = (t: number) => (t === 1 ? "#3f86d8" : "#d23b34");
+
+const FELT = "radial-gradient(at 50% 42%, #2c9760 0%, #1f7d4d 42%, #166040 76%, #0e4a30 100%)";
+const OUTER = "radial-gradient(at 50% 38%, #123c28 0%, #0c2a1c 60%, #07150e 100%)";
 
 export default function GameBoard({ roomId, code }: { roomId: string; code: string }) {
   const [view, setView] = useState<GameView | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [selMeld, setSelMeld] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"none" | "rank" | "suit">("rank");
-  const [chatOpen, setChatOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,7 +119,6 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
     const prev = prevRef.current;
     if (prev && view && view.status !== "lobby") {
       if (view.round !== prev.round && view.phase !== "over") {
-        // distribuição: leva de cartas do monte para cada cadeira
         [1, 2, 3, 4, 1, 2, 3, 4].forEach((s, i) =>
           setTimeout(() => addFly(center(deckRef.current), center(seatRefs.current[s]), false), i * 90)
         );
@@ -153,7 +154,7 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
 
   if (!view) {
     return (
-      <div className="fixed inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_center,#1f7a4d,#0c3d24)] text-emerald-100">
+      <div className="fixed inset-0 grid place-items-center text-emerald-100" style={{ background: OUTER, backgroundColor: "#0a1f15" }}>
         <p className="animate-pulse">Carregando mesa…</p>
       </div>
     );
@@ -164,7 +165,6 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
   const phase = view.phase;
   const toggleCard = (c: string) => setSelected((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]));
 
-  // posições relativas ao jogador local
   const me = view.you.seat;
   const leftS = (me % 4) + 1;
   const topS = (leftS % 4) + 1;
@@ -174,307 +174,383 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
   const pLeft = bySeat(leftS);
   const pRight = bySeat(rightS);
 
-  // bandas de jogos baixados: a minha embaixo, a adversária em cima
   const oppTeam = myTeam === 1 ? 2 : 1;
   const myMelds = view.melds[String(myTeam)] ?? [];
   const oppMelds = view.melds[String(oppTeam)] ?? [];
-
   const hand = sortHand(view.your_hand, sortMode);
+  const turnName = view.players.find((p) => p.is_turn)?.name ?? "—";
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden text-white bg-[radial-gradient(ellipse_at_center,#1f7a4d_0%,#0c3d24_75%)]">
-      {/* ===== HUD topo ===== */}
-      <div className="relative z-20 flex items-start justify-between px-2 pt-2">
-        <div className="flex items-center gap-2">
-          <span className="bg-black/40 rounded-lg px-2.5 py-1 text-xs font-bold tracking-wide">🃏 Canastra</span>
-          <span className="bg-black/25 rounded-lg px-2 py-1 text-[11px] font-mono">{code}</span>
-        </div>
-        <div className="flex items-start gap-2">
-          <div className="bg-black/45 rounded-lg px-2.5 py-1.5 text-xs min-w-[96px]">
-            <p className="text-[10px] text-white/60 font-semibold tracking-wider mb-0.5">PONTOS</p>
-            {([1, 2] as const).map((t) => (
-              <div key={t} className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full" style={{ background: teamColor(t) }} />
-                  Dupla {t}
-                </span>
-                <b>{view.scores[String(t)]}</b>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex gap-1">
-              <IconBtn title="Ajuda">?</IconBtn>
-              <IconBtn title="Config">⚙️</IconBtn>
-            </div>
-            <a href="/canastra" className="text-center bg-red-600/80 hover:bg-red-600 rounded-md px-2 py-1 text-[11px] font-semibold">
-              Sair
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* ===== Adversário do topo (parceiro fica embaixo? não: topo = parceiro) ===== */}
-      <div className="relative z-10 flex flex-col items-center mt-1" ref={(el) => { seatRefs.current[topS] = el; }}>
-        <SeatBlock p={pTop} compact />
-        <CardBackRow n={pTop?.hand_count ?? 0} />
-      </div>
-
-      {/* ===== Faixa de jogos da dupla adversária (em cima) ===== */}
-      <MeldBand team={oppTeam} melds={oppMelds} label={`Jogos Dupla ${oppTeam}`} />
-
-      {/* ===== Centro: jogadores laterais + MONTE + LIXO ===== */}
-      <div className="relative z-10 flex-1 flex items-center justify-between px-1 min-h-0">
-        <div className="flex flex-col items-center gap-1 w-20 shrink-0" ref={(el) => { seatRefs.current[leftS] = el; }}>
-          <SeatBlock p={pLeft} side />
-        </div>
-
-        <div className="flex items-end justify-center gap-5">
-          {/* MONTE */}
-          <div className="flex flex-col items-center">
-            <span className="text-[10px] font-bold tracking-widest text-white/70 mb-0.5">MONTE</span>
-            <div ref={deckRef}><CardBack big /></div>
-            <span className="mt-0.5 text-xs font-bold bg-black/40 rounded px-1.5">{view.stock_count}</span>
-          </div>
-          {/* LIXO */}
-          <div className="flex flex-col items-center">
-            <span className="text-[10px] font-bold tracking-widest text-white/70 mb-0.5">
-              LIXO {view.discard_locked && "🔒"}
-            </span>
-            <div ref={lixoRef}>
-              {view.discard_top ? (
-                <Card card={view.discard_top} big />
-              ) : (
-                <div className="w-12 h-16 rounded-lg border border-dashed border-white/30" />
-              )}
-            </div>
-            <span className="mt-0.5 text-xs font-bold bg-black/40 rounded px-1.5">{view.discard_count}</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center gap-1 w-20 shrink-0" ref={(el) => { seatRefs.current[rightS] = el; }}>
-          <SeatBlock p={pRight} side />
-        </div>
-      </div>
-
-      {/* ===== Faixa de jogos da minha dupla (embaixo) ===== */}
-      <MeldBand
-        team={myTeam}
-        melds={myMelds}
-        label={`Jogos Dupla ${myTeam} (sua)`}
-        selectable={myTurn && phase === "play"}
-        selMeld={selMeld}
-        onSelect={(id) => setSelMeld((s) => (s === id ? null : id))}
+    <div
+      className="fixed inset-0 overflow-hidden text-white"
+      style={{ background: OUTER, backgroundColor: "#0a1f15", fontFamily: "Manrope, system-ui, sans-serif" }}
+    >
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
       />
 
-      {/* ===== Ações ===== */}
-      <div className="relative z-10 px-2 py-1">
-        {!myTurn ? (
-          <p className="text-center text-sm text-emerald-100/80">
-            Vez de <b>{view.players.find((p) => p.is_turn)?.name ?? "—"}</b>
-          </p>
-        ) : phase === "draw" ? (
-          <div className="grid grid-cols-2 gap-2">
-            {view.stock_count > 0 ? (
-              <button onClick={() => run(drawCard)} disabled={busy} className="btn-primary">Comprar do monte</button>
-            ) : (
-              <button onClick={() => run(endRound)} disabled={busy} className="btn-ghost">Encerrar (monte vazio)</button>
-            )}
-            <button
-              onClick={() =>
-                run(() => (selMeld ? takePile("add", [], selMeld) : takePile("new", [...selected, view.discard_top!], null)))
-              }
-              disabled={busy || !view.discard_top || view.discard_locked || (!selMeld && selected.length < 2)}
-              className="btn-amber"
-            >
-              Levar a mesa (LIXO)
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-4 gap-1.5">
-            <button onClick={() => run(() => meldCards(selected))} disabled={busy || selected.length < 3} className="btn-primary !py-2 text-sm">Baixar</button>
-            <button onClick={() => run(() => addToMeld(selMeld!, selected))} disabled={busy || !selMeld || selected.length < 1} className="btn-ghost !py-2 text-sm">Encaixar</button>
-            <button onClick={() => run(() => discardCard(selected[0]))} disabled={busy || selected.length !== 1} className="btn-ghost !py-2 text-sm">Descartar</button>
-            <button onClick={() => run(() => bate(selected.length === 1 ? selected[0] : null))} disabled={busy} className="btn-amber !py-2 text-sm">Bater</button>
-          </div>
-        )}
+      {/* tampo de feltro */}
+      <div
+        className="absolute inset-2 sm:inset-4 rounded-[34px]"
+        style={{ background: FELT, boxShadow: "inset 0 0 80px rgba(0,0,0,.45), 0 10px 40px rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.06)" }}
+      >
+        <div
+          className="absolute inset-0 grid place-items-center pointer-events-none select-none"
+          style={{ fontFamily: "Archivo, sans-serif", fontWeight: 900, color: "rgba(255,255,255,.05)", fontSize: "9vw", letterSpacing: ".06em", whiteSpace: "nowrap" }}
+        >
+          GRUPO DUARTE
+        </div>
       </div>
 
-      {/* ===== Jogador local: bloco + ordenar + mão ===== */}
-      <div className="relative z-10 flex items-end gap-2 px-2 pb-2">
-        <div className="flex flex-col items-center shrink-0" ref={(el) => { seatRefs.current[me] = el; }}>
-          <SeatBlock p={view.players.find((p) => p.seat === me) ?? null} you />
-        </div>
-        <div className="flex flex-col gap-1 shrink-0">
-          <button onClick={() => setSortMode("suit")} className={`text-[10px] rounded px-1.5 py-1 ${sortMode === "suit" ? "bg-emerald-500 text-emerald-950" : "bg-black/30"}`}>♣ naipe</button>
-          <button onClick={() => setSortMode("rank")} className={`text-[10px] rounded px-1.5 py-1 ${sortMode === "rank" ? "bg-emerald-500 text-emerald-950" : "bg-black/30"}`}># número</button>
-        </div>
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex gap-1 pb-1" style={{ minWidth: "min-content" }}>
-            {hand.map((c) => (
-              <Card key={c} card={c} selected={selected.includes(c)} onClick={() => toggleCard(c)} />
-            ))}
+      {/* ===== HUD: logo (topo-esq) ===== */}
+      <div className="absolute top-3 left-3 z-30 flex items-center gap-2">
+        <div className="rounded-xl px-3 py-1.5" style={{ background: "rgba(7,26,18,.72)", border: "1px solid rgba(255,255,255,.08)" }}>
+          <div style={{ fontFamily: "Archivo, sans-serif", fontWeight: 800, lineHeight: 1 }} className="text-[15px] tracking-tight">
+            <span className="text-white">GRUPO </span>
+            <span style={{ color: "#f3c64a" }}>DUARTE</span>
+          </div>
+          <div className="mt-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold" style={{ background: "linear-gradient(#f6d569,#d9a72f)", color: "#2a1c05" }}>
+            ★ MESA RANKEADA
           </div>
         </div>
       </div>
 
-      {/* ===== Chat recolhível ===== */}
-      <div className="absolute bottom-2 right-2 z-30">
-        {chatOpen ? (
-          <div className="w-56 bg-black/70 backdrop-blur rounded-xl p-2 shadow-xl border border-white/10">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold">💬 Chat</span>
-              <button onClick={() => setChatOpen(false)} className="text-white/60 text-xs">✕</button>
+      {/* ===== HUD: pontos + ícones (topo-dir) ===== */}
+      <div className="absolute top-3 right-3 z-30 flex items-start gap-2">
+        <div className="rounded-xl px-3 py-1.5 text-[11px] min-w-[104px]" style={{ background: "rgba(7,26,18,.72)", border: "1px solid rgba(255,255,255,.08)" }}>
+          <p className="text-[9px] font-bold tracking-[.18em] text-white/55 mb-1">PONTOS</p>
+          {([1, 2] as const).map((t) => (
+            <div key={t} className="flex items-center justify-between gap-3 leading-5">
+              <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: teamColor(t) }} />
+              <b className="tabular-nums">{view.scores[String(t)]}</b>
+              <span className="text-white/45 text-[9px]">{t === 2 ? "pts" : ""}</span>
             </div>
-            <div className="h-24 text-[11px] text-white/40 grid place-items-center">em breve</div>
-            <input disabled placeholder="Mensagem…" className="w-full mt-1 rounded bg-white/10 px-2 py-1 text-xs placeholder:text-white/30" />
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <IconBtn>?</IconBtn>
+          <IconBtn>⚙</IconBtn>
+          <IconBtn>🔊</IconBtn>
+          <a href="/canastra" className="rounded-lg px-2.5 py-1.5 text-[11px] font-bold flex items-center gap-1" style={{ background: "rgba(210,59,52,.9)", color: "#fff" }}>
+            ✕ Sair
+          </a>
+        </div>
+      </div>
+
+      {/* ===== Adversário do topo ===== */}
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1" ref={(el) => { seatRefs.current[topS] = el; }}>
+        <Chip p={pTop} />
+        <BackFan n={pTop?.hand_count ?? 0} />
+      </div>
+
+      {/* ===== Esquerda ===== */}
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2" ref={(el) => { seatRefs.current[leftS] = el; }}>
+        <Chip p={pLeft} />
+        <BackPile n={pLeft?.hand_count ?? 0} />
+      </div>
+
+      {/* ===== Direita ===== */}
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2" ref={(el) => { seatRefs.current[rightS] = el; }}>
+        <BackPile n={pRight?.hand_count ?? 0} />
+        <Chip p={pRight} />
+      </div>
+
+      {/* ===== Centro: jogos adversários, MONTE+LIXO, jogos da minha dupla ===== */}
+      <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-3 w-[60%]">
+        <MeldZone melds={oppMelds} team={oppTeam} />
+
+        <div className="flex items-end justify-center gap-7">
+          <Pile label="MONTE" count={view.stock_count} innerRef={deckRef}>
+            <CardBack red lg />
+          </Pile>
+          <Pile label={`LIXO${view.discard_locked ? " 🔒" : ""}`} count={view.discard_count} innerRef={lixoRef}>
+            {view.discard_top ? <Card card={view.discard_top} size="lg" /> : <div className="w-[52px] h-[72px] rounded-[8px] border-2 border-dashed border-white/25" />}
+          </Pile>
+        </div>
+
+        <MeldZone
+          melds={myMelds}
+          team={myTeam}
+          selectable={myTurn && phase === "play"}
+          selMeld={selMeld}
+          onSelect={(id) => setSelMeld((s) => (s === id ? null : id))}
+        />
+      </div>
+
+      {/* ===== Ações ===== */}
+      <div className="absolute bottom-[104px] left-1/2 -translate-x-1/2 z-30">
+        <div className="rounded-2xl px-3 py-2 flex items-center gap-2 shadow-xl" style={{ background: "rgba(9,20,14,.85)", border: "1px solid rgba(255,255,255,.08)" }}>
+          {!myTurn ? (
+            <span className="text-sm text-white/80 px-2">Vez de <b style={{ color: "#f3c64a" }}>{turnName}</b></span>
+          ) : phase === "draw" ? (
+            <>
+              {view.stock_count > 0 ? (
+                <Btn gold onClick={() => run(drawCard)} disabled={busy}>Comprar do monte</Btn>
+              ) : (
+                <Btn onClick={() => run(endRound)} disabled={busy}>Encerrar (monte vazio)</Btn>
+              )}
+              <Btn
+                onClick={() => run(() => (selMeld ? takePile("add", [], selMeld) : takePile("new", [...selected, view.discard_top!], null)))}
+                disabled={busy || !view.discard_top || view.discard_locked || (!selMeld && selected.length < 2)}
+              >
+                Pegar lixo
+              </Btn>
+            </>
+          ) : (
+            <>
+              <Btn onClick={() => run(() => meldCards(selected))} disabled={busy || selected.length < 3}>Baixar jogo</Btn>
+              <Btn onClick={() => run(() => addToMeld(selMeld!, selected))} disabled={busy || !selMeld || selected.length < 1}>Encaixar</Btn>
+              <Btn onClick={() => run(() => discardCard(selected[0]))} disabled={busy || selected.length !== 1}>Descartar</Btn>
+              <Btn gold onClick={() => run(() => bate(selected.length === 1 ? selected[0] : null))} disabled={busy}>Bater</Btn>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ===== Jogador local: chip + ordenar (canto inf-esq) ===== */}
+      <div className="absolute bottom-3 left-3 z-30 flex items-end gap-2">
+        <div ref={(el) => { seatRefs.current[me] = el; }}>
+          <Chip p={view.players.find((p) => p.seat === me) ?? null} you />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[9px] text-white/55 font-semibold">ordenar:</span>
+          <div className="flex gap-1">
+            <button onClick={() => setSortMode("suit")} className="w-7 h-7 rounded-md text-xs font-bold grid place-items-center" style={sortMode === "suit" ? goldStyle : darkStyle}>♠</button>
+            <button onClick={() => setSortMode("rank")} className="w-7 h-7 rounded-md text-xs font-bold grid place-items-center" style={sortMode === "rank" ? goldStyle : darkStyle}>A</button>
           </div>
-        ) : (
-          <button onClick={() => setChatOpen(true)} className="bg-black/50 hover:bg-black/70 rounded-full px-3 py-2 text-xs font-semibold shadow">💬 Chat</button>
-        )}
+        </div>
+      </div>
+
+      {/* ===== Mão (leque) ===== */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-end justify-center h-[80px]">
+        {hand.map((c, i) => {
+          const mid = (hand.length - 1) / 2;
+          const ang = (i - mid) * 4.2;
+          const lift = Math.abs(i - mid) ** 2 * 0.5;
+          const sel = selected.includes(c);
+          return (
+            <div
+              key={c}
+              onClick={() => toggleCard(c)}
+              className="cursor-pointer"
+              style={{
+                transform: `rotate(${ang}deg) translateY(${lift - (sel ? 18 : 0)}px)`,
+                transformOrigin: "bottom center",
+                marginLeft: i === 0 ? 0 : -18,
+                zIndex: sel ? 50 : i,
+              }}
+            >
+              <Card card={c} size="md" selected={sel} />
+            </div>
+          );
+        })}
       </div>
 
       {/* ===== erro ===== */}
       {error && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-red-600/90 rounded-lg px-3 py-2 text-sm shadow-lg max-w-[90%] text-center">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 rounded-lg px-3 py-2 text-sm shadow-lg max-w-[90%] text-center" style={{ background: "rgba(210,59,52,.92)" }}>
           {error}
         </div>
       )}
 
-      {/* ===== cartas voando (animações) ===== */}
+      {/* ===== cartas voando ===== */}
       <AnimatePresence>
         {flying.map((f) => (
           <motion.div
             key={f.id}
-            initial={{ x: f.from.x - 24, y: f.from.y - 32, scale: 0.9, rotate: -8 }}
-            animate={{ x: f.to.x - 24, y: f.to.y - 32, scale: 1, rotate: 0 }}
+            initial={{ x: f.from.x - 26, y: f.from.y - 36, scale: 0.9, rotate: -8 }}
+            animate={{ x: f.to.x - 26, y: f.to.y - 36, scale: 1, rotate: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4, ease: "easeInOut" }}
             onAnimationComplete={() => setFlying((a) => a.filter((z) => z.id !== f.id))}
             className="fixed left-0 top-0 z-40 pointer-events-none"
           >
-            {f.faceUp ? <Card card={f.card || ""} big /> : <CardBack big />}
+            {f.faceUp ? <Card card={f.card || ""} size="lg" /> : <CardBack red lg />}
           </motion.div>
         ))}
       </AnimatePresence>
 
-      {/* ===== fim de rodada / jogo ===== */}
-      {phase === "over" && view.last_round && (
-        <RoundOver view={view} busy={busy} onNext={() => run(nextRound)} />
-      )}
-
-      <style jsx global>{btnStyles}</style>
+      {phase === "over" && view.last_round && <RoundOver view={view} busy={busy} onNext={() => run(nextRound)} />}
     </div>
   );
 }
 
 /* ============================ subcomponentes ============================ */
 
-function IconBtn({ children, title }: { children: React.ReactNode; title: string }) {
+const goldStyle = { background: "linear-gradient(#f6d569,#d9a72f)", color: "#2a1c05" } as const;
+const darkStyle = { background: "rgba(7,26,18,.7)", color: "#fff", border: "1px solid rgba(255,255,255,.1)" } as const;
+
+function Btn({ children, onClick, disabled, gold }: { children: React.ReactNode; onClick: () => void; disabled?: boolean; gold?: boolean }) {
   return (
-    <button title={title} className="w-7 h-7 grid place-items-center bg-black/35 hover:bg-black/55 rounded-md text-xs">
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded-xl px-3 py-2 text-sm font-bold whitespace-nowrap transition disabled:opacity-35"
+      style={gold ? goldStyle : darkStyle}
+    >
       {children}
     </button>
   );
 }
 
-function SeatBlock({ p, you, side, compact }: { p: PlayerView | null; you?: boolean; side?: boolean; compact?: boolean }) {
-  if (!p) return <div className="w-16 h-12" />;
-  const init = p.name.trim().slice(0, 2).toUpperCase();
+function IconBtn({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`flex ${side ? "flex-col" : "flex-row"} items-center gap-1.5 ${p.is_turn ? "" : "opacity-90"}`}>
-      <div
-        className={`relative grid place-items-center rounded-full font-bold text-white shadow-md ${compact || side ? "w-9 h-9 text-xs" : "w-11 h-11 text-sm"} ${
-          p.is_turn ? "ring-4 ring-amber-300/70 animate-pulse" : "ring-2 ring-black/30"
-        }`}
-        style={{ background: teamColor(p.team) }}
-      >
-        {init}
+    <button className="w-8 h-8 grid place-items-center rounded-lg text-sm" style={{ background: "rgba(7,26,18,.7)", border: "1px solid rgba(255,255,255,.08)" }}>
+      {children}
+    </button>
+  );
+}
+
+function Chip({ p, you }: { p: PlayerView | null; you?: boolean }) {
+  if (!p) return <div className="h-9" />;
+  return (
+    <div
+      className="flex items-center gap-2 rounded-xl pl-1 pr-3 py-1"
+      style={{
+        background: "rgba(7,26,18,.78)",
+        border: p.is_turn ? "1.5px solid #f3c64a" : "1px solid rgba(255,255,255,.08)",
+        boxShadow: p.is_turn ? "0 0 14px rgba(243,198,74,.4)" : "none",
+      }}
+    >
+      <div className="relative w-8 h-8 rounded-lg grid place-items-center text-white/80" style={{ background: "rgba(255,255,255,.12)" }}>
+        👤
+        <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border border-black/40" style={{ background: teamColor(p.team) }} />
       </div>
-      <div className={`${side ? "text-center" : ""} leading-tight`}>
-        <p className="text-[11px] font-semibold truncate max-w-[72px]">{p.name}{you ? " (você)" : ""}</p>
-        <p className="text-[9px] text-white/60">{p.hand_count} cartas{p.is_turn ? " · vez" : ""}</p>
+      <div className="leading-tight">
+        <p className="text-[12px] font-bold truncate max-w-[92px]">{p.name}{you ? " (você)" : ""}</p>
+        <p className="text-[10px] text-white/55">{p.hand_count} cartas</p>
       </div>
+      {p.is_turn && (
+        <span className="ml-1 w-5 h-5 rounded-full grid place-items-center text-[10px] font-extrabold" style={goldStyle}>
+          ●
+        </span>
+      )}
     </div>
   );
 }
 
-function CardBackRow({ n }: { n: number }) {
+function BackFan({ n }: { n: number }) {
+  const count = Math.min(n, 13);
+  const mid = (count - 1) / 2;
   return (
-    <div className="flex -space-x-3 mt-0.5">
-      {Array.from({ length: Math.min(n, 13) }).map((_, i) => (
-        <CardBack key={i} mini />
+    <div className="flex items-start justify-center h-9">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} style={{ transform: `rotate(${(i - mid) * 3}deg)`, transformOrigin: "bottom center", marginLeft: i === 0 ? 0 : -18 }}>
+          <CardBack sm />
+        </div>
       ))}
     </div>
   );
 }
 
-function MeldBand({
-  team, melds, label, selectable, selMeld, onSelect,
-}: {
-  team: number; melds: Meld[]; label: string;
-  selectable?: boolean; selMeld?: string | null; onSelect?: (id: string) => void;
-}) {
+function BackPile({ n }: { n: number }) {
+  const count = Math.min(n, 5);
   return (
-    <div className="relative z-10 mx-2 my-1 rounded-xl border border-white/10 bg-black/15 px-2 py-1 min-h-[52px]">
-      <span className="text-[10px] font-semibold" style={{ color: teamColor(team) }}>{label}</span>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {melds.length === 0 && <span className="text-[11px] text-white/30 py-2">sem jogos</span>}
-        {melds.map((m) => (
-          <button
-            key={m.id}
-            onClick={selectable && onSelect ? () => onSelect(m.id) : undefined}
-            className={`shrink-0 rounded-lg p-1 transition ${selectable ? "cursor-pointer hover:bg-white/5" : "cursor-default"} ${
-              selMeld === m.id ? "ring-2 ring-amber-300 bg-amber-300/10" : ""
-            }`}
-          >
-            <div className="flex">
-              {m.cards.map((c, i) => (
-                <div key={c + i} style={{ marginLeft: i === 0 ? 0 : -16 }}>
-                  <Card card={c} mini />
-                </div>
-              ))}
-            </div>
-            {m.is_canastra && (
-              <span className={`block text-center text-[8px] font-bold ${m.clean ? "text-sky-300" : "text-amber-300"}`}>
-                {m.clean ? "CANASTRA LIMPA" : "canastra suja"}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+    <div className="relative" style={{ width: 40, height: 56 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="absolute" style={{ left: i * 2.5, top: i * 1.5 }}>
+          <CardBack sm />
+        </div>
+      ))}
     </div>
   );
 }
 
-function Card({ card, selected, onClick, big, mini }: { card: string; selected?: boolean; onClick?: () => void; big?: boolean; mini?: boolean }) {
+function Pile({ label, count, innerRef, children }: { label: string; count: number; innerRef?: React.Ref<HTMLDivElement>; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-[10px] font-bold tracking-[.16em] text-white/70">{label}</span>
+      <div ref={innerRef}>{children}</div>
+      <span className="text-[12px] font-extrabold rounded px-1.5 tabular-nums" style={{ background: "rgba(7,26,18,.7)" }}>{count}</span>
+    </div>
+  );
+}
+
+function MeldZone({
+  melds, team, selectable, selMeld, onSelect,
+}: {
+  melds: Meld[]; team: number; selectable?: boolean; selMeld?: string | null; onSelect?: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2 min-h-[58px] w-full">
+      {melds.length === 0 && <span className="text-[10px] text-white/25">— jogos da dupla {team} —</span>}
+      {melds.map((m) => (
+        <div
+          key={m.id}
+          onClick={selectable && onSelect ? () => onSelect(m.id) : undefined}
+          className={`rounded-lg p-1 transition ${selectable ? "cursor-pointer" : ""} ${selMeld === m.id ? "ring-2 ring-amber-300" : ""}`}
+          style={{ background: "rgba(7,26,18,.4)" }}
+        >
+          <div className="flex">
+            {m.cards.map((c, i) => (
+              <div key={c + i} style={{ marginLeft: i === 0 ? 0 : -18 }}>
+                <Card card={c} size="sm" />
+              </div>
+            ))}
+          </div>
+          {m.is_canastra && (
+            <span className="block text-center text-[8px] font-bold mt-0.5" style={{ color: m.clean ? "#7ec8ff" : "#f3c64a" }}>
+              {m.clean ? "CANASTRA LIMPA" : "CANASTRA SUJA"}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Card({ card, selected, onClick, size = "md" }: { card: string; selected?: boolean; onClick?: () => void; size?: "sm" | "md" | "lg" }) {
   const { label, symbol, isRed, isWild } = parseCard(card);
-  const size = mini ? "w-8 h-11" : big ? "w-12 h-16" : "w-10 h-14";
-  const corner = mini ? "text-[9px]" : big ? "text-xs" : "text-[11px]";
-  const center = mini ? "text-sm" : big ? "text-2xl" : "text-lg";
+  const dim = size === "sm" ? { w: 38, h: 54, r: 6, rank: 11, suit: 8, big: 16 } : size === "lg" ? { w: 52, h: 72, r: 8, rank: 15, suit: 11, big: 26 } : { w: 46, h: 66, r: 8, rank: 14, suit: 10, big: 22 };
+  const color = isRed ? "#d23b34" : "#1b1b22";
   return (
     <div
       onClick={onClick}
       role={onClick ? "button" : undefined}
-      className={`${size} relative rounded-md bg-white shadow border select-none shrink-0 transition grid place-items-center
-        ${onClick ? "cursor-pointer" : ""}
-        ${isWild ? "border-purple-500 ring-1 ring-purple-400" : "border-gray-300"}
-        ${selected ? "-translate-y-2.5 ring-2 ring-amber-400" : ""}
-        ${isRed ? "text-red-600" : "text-gray-900"}`}
+      className="relative shrink-0 select-none transition"
+      style={{
+        width: dim.w,
+        height: dim.h,
+        borderRadius: dim.r,
+        background: "linear-gradient(#ffffff,#f3f1ea)",
+        color,
+        border: isWild ? "2px solid #a855f7" : "1px solid rgba(0,0,0,.18)",
+        boxShadow: selected ? "0 0 0 2px #f3c64a, 0 6px 14px rgba(0,0,0,.4)" : "0 2px 5px rgba(0,0,0,.35)",
+        cursor: onClick ? "pointer" : "default",
+        transform: selected ? "translateY(-2px)" : "none",
+        fontFamily: "Manrope, sans-serif",
+      }}
     >
-      <span className={`absolute top-0.5 left-1 font-bold leading-none ${corner}`}>{label}</span>
-      <span className={`leading-none ${center}`}>{symbol}</span>
-      {isWild && <span className="absolute bottom-0.5 right-0.5 text-[8px] text-purple-500">★</span>}
+      <div className="absolute top-0.5 left-1 text-center leading-none" style={{ fontWeight: 800 }}>
+        <div style={{ fontSize: dim.rank, lineHeight: 1 }}>{label}</div>
+        <div style={{ fontSize: dim.suit, lineHeight: 1 }}>{symbol}</div>
+      </div>
+      <div className="absolute inset-0 grid place-items-center" style={{ fontSize: dim.big, opacity: 0.92 }}>{symbol}</div>
+      {isWild && <div className="absolute bottom-0.5 right-1 text-[9px]" style={{ color: "#a855f7" }}>★</div>}
     </div>
   );
 }
 
-function CardBack({ big, mini }: { big?: boolean; mini?: boolean }) {
-  const size = mini ? "w-7 h-10" : big ? "w-12 h-16" : "w-10 h-14";
+function CardBack({ red, lg, sm }: { red?: boolean; lg?: boolean; sm?: boolean }) {
+  const w = lg ? 52 : sm ? 32 : 46;
+  const h = lg ? 72 : sm ? 46 : 66;
+  const grad = red ? "linear-gradient(135deg,#cf463e,#9e2a25)" : "linear-gradient(135deg,#2f5fb0,#21408a)";
   return (
-    <div className={`${size} rounded-lg shadow border border-white/40 shrink-0 bg-blue-700`}
-      style={{ backgroundImage: "repeating-linear-gradient(45deg,#1d4ed8 0 6px,#b91c1c 6px 12px)" }}
-    />
+    <div
+      className="relative shrink-0"
+      style={{
+        width: w,
+        height: h,
+        borderRadius: 8,
+        backgroundImage: `repeating-linear-gradient(45deg, rgba(255,255,255,.15) 0px, rgba(255,255,255,.15) 4px, transparent 4px, transparent 9px), ${grad}`,
+        border: "2px solid rgba(255,255,255,.55)",
+        boxShadow: "0 2px 5px rgba(0,0,0,.4)",
+      }}
+    >
+      <div className="absolute inset-0 grid place-items-center text-white/70" style={{ fontSize: lg ? 16 : 11 }}>◆</div>
+    </div>
   );
 }
 
@@ -487,24 +563,22 @@ function RoundOver({ view, busy, onNext }: { view: GameView; busy: boolean; onNe
   };
   return (
     <div className="absolute inset-0 z-50 grid place-items-center bg-black/70 px-4">
-      <div className="w-full max-w-sm bg-emerald-950 rounded-2xl border border-white/10 p-4 shadow-2xl">
+      <div className="w-full max-w-sm rounded-2xl p-4 shadow-2xl" style={{ background: "#0a1f15", border: "1px solid rgba(255,255,255,.1)" }}>
         <p className="text-center font-bold text-lg mb-3">
-          {finished ? `🏆 Dupla ${winner} venceu!` : lr.bater_team ? `Dupla ${lr.bater_team} bateu!` : "Monte esgotado (morto)"}
+          {finished ? `🏆 Dupla ${winner} venceu!` : lr.bater_team ? `Dupla ${lr.bater_team} bateu!` : "Monte esgotado"}
         </p>
         <div className="grid grid-cols-2 gap-3">
           {(["1", "2"] as const).map((t) => (
-            <div key={t} className="rounded-xl p-3 bg-white/5 border border-white/10">
+            <div key={t} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.1)" }}>
               <p className="font-semibold text-sm mb-1 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full" style={{ background: teamColor(Number(t)) }} /> Dupla {t}
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: teamColor(Number(t)) }} /> Dupla {t}
               </p>
               <div className="text-[11px] text-emerald-100/80 space-y-0.5">
                 {Object.entries(labels).map(([k, lbl]) =>
                   lr.breakdown[t][k] !== undefined && lr.breakdown[t][k] !== 0 ? (
                     <div key={k} className="flex justify-between">
                       <span>{lbl}</span>
-                      <span className={k === "penalidade" ? "text-red-300" : ""}>
-                        {k === "penalidade" ? `-${lr.breakdown[t][k]}` : `+${lr.breakdown[t][k]}`}
-                      </span>
+                      <span className={k === "penalidade" ? "text-red-300" : ""}>{k === "penalidade" ? `-${lr.breakdown[t][k]}` : `+${lr.breakdown[t][k]}`}</span>
                     </div>
                   ) : null
                 )}
@@ -514,24 +588,11 @@ function RoundOver({ view, busy, onNext }: { view: GameView; busy: boolean; onNe
           ))}
         </div>
         {!finished && view.you.is_host && (
-          <button onClick={onNext} disabled={busy} className="btn-primary w-full mt-4">Próxima rodada →</button>
+          <button onClick={onNext} disabled={busy} className="w-full mt-4 rounded-xl py-3 font-bold disabled:opacity-40" style={goldStyle}>Próxima rodada →</button>
         )}
-        {!finished && !view.you.is_host && (
-          <p className="text-center text-xs text-emerald-200/60 mt-4">Aguardando o anfitrião…</p>
-        )}
-        {finished && (
-          <a href="/canastra" className="btn-primary block text-center mt-4">Voltar ao início</a>
-        )}
+        {!finished && !view.you.is_host && <p className="text-center text-xs text-white/55 mt-4">Aguardando o anfitrião…</p>}
+        {finished && <a href="/canastra" className="block text-center mt-4 rounded-xl py-3 font-bold" style={goldStyle}>Voltar ao início</a>}
       </div>
     </div>
   );
 }
-
-const btnStyles = `
-  .btn-primary{ background:#10b981; color:#04261b; font-weight:600; border-radius:.75rem; padding:.7rem; }
-  .btn-primary:disabled{ opacity:.4; }
-  .btn-ghost{ background:rgba(255,255,255,.12); color:#fff; font-weight:600; border-radius:.75rem; padding:.7rem; }
-  .btn-ghost:disabled{ opacity:.35; }
-  .btn-amber{ background:#f59e0b; color:#3a2503; font-weight:700; border-radius:.75rem; padding:.7rem; }
-  .btn-amber:disabled{ opacity:.35; }
-`;
