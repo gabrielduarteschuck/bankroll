@@ -17,7 +17,7 @@ Sem login: o jogador entra na mesa por **código de sala + nome**.
 - **2 baralhos** combinados (cartas limitadas — só existe o que há em 2 baralhos).
 - Embaralhar simulando uma pessoa no modo tradicional, **3 vezes**.
 - Cada jogador sai com **13 cartas**.
-- **Tempo por jogada: 1 minuto** para pensar.
+- **Sem tempo limite por jogada** — o jogador pensa o quanto quiser.
 - Quem sai jogando pode **não querer a 1ª carta comprada**: descarta e compra outra.
 
 ## Cartas especiais
@@ -65,7 +65,7 @@ Sem login: o jogador entra na mesa por **código de sala + nome**.
 ## Etapas de construção
 1. **Sala + Lobby (tempo real)** — criar/entrar por código, nome, ver 4 assentos ao vivo, sorteio das duplas.
 2. **Baralho + distribuição** — 2 baralhos, embaralho 3x, 13 cartas, 3 vermelho/compra inicial, descarte da 1ª carta.
-3. **Jogadas** — comprar/descartar, baixar jogo (compartilhado por dupla), coringa, trancar mesa (3 preto), turno de 1 min.
+3. **Jogadas** — comprar/descartar, baixar jogo (compartilhado por dupla), coringa, trancar mesa (3 preto). Sem tempo limite por jogada.
 4. **Pontuação e fim** — contagem por carta, canastras limpa/suja, bater, obrigada 150, 4000 pts.
 
 ## Dúvidas a confirmar nas próximas etapas
