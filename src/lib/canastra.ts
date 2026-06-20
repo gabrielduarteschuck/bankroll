@@ -194,6 +194,7 @@ export const takePile = (mode: "new" | "add", cards: string[], meldId: string | 
   rpc("canastra_take_pile", { p_mode: mode, p_cards: cards, p_meld_id: meldId });
 export const bate = (card: string | null) => rpc("canastra_bate", { p_card: card });
 export const nextRound = () => rpc("canastra_next_round", {});
+export const restartSim = () => rpc("canastra_restart_sim", {});
 
 // Helpers de carta: "<rank><suit>-<deck>", ex.: "TH-1" = 10 de copas, 2º baralho
 export const SUIT_SYMBOL: Record<string, string> = { S: "♠", H: "♥", D: "♦", C: "♣" };

@@ -15,6 +15,7 @@ import {
   meldCards,
   nextRound,
   parseCard,
+  restartSim,
   type PlayerView,
   subscribeRoom,
   takePile,
@@ -176,6 +177,7 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
   const pLeft = bySeat(leftS);
   const pRight = bySeat(rightS);
   const pMe = view.players.find((p) => p.seat === me) ?? null;
+  const hasBots = view.players.some((p) => p.is_bot);
 
   const oppTeam = myTeam === 1 ? 2 : 1;
   const myMelds = view.melds[String(myTeam)] ?? [];
@@ -207,10 +209,14 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
       </div>
       <div className="flex flex-col gap-1">
         <a href="/canastra" className="rounded-lg px-2 py-1 text-[11px] font-bold text-center" style={{ background: "rgba(210,59,52,.9)", color: "#fff" }}>✕ Sair</a>
-        <div className="flex gap-1">
-          <IconBtn>?</IconBtn>
-          <IconBtn>⚙</IconBtn>
-        </div>
+        {hasBots && view.you.is_host ? (
+          <button onClick={() => run(restartSim)} disabled={busy} className="rounded-lg px-2 py-1 text-[11px] font-bold disabled:opacity-50" style={goldStyle}>🔄 Reiniciar</button>
+        ) : (
+          <div className="flex gap-1">
+            <IconBtn>?</IconBtn>
+            <IconBtn>⚙</IconBtn>
+          </div>
+        )}
       </div>
     </div>
   );
