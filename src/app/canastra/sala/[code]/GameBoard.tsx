@@ -271,28 +271,30 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
     </div>
   );
 
-  // mão: leque numa fileira; com muitas cartas (>13, ex.: pegou o lixo), 2 fileiras
-  const twoRows = hand.length > 13;
-  const splitAt = Math.ceil(hand.length / 2);
-  const handRows = twoRows ? [hand.slice(0, splitAt), hand.slice(splitAt)] : [hand];
+  // mão: fileira de até 13 cartas (leque); o que passar disso vira fileira ACIMA
+  const PER_ROW = 13;
+  const multiRow = hand.length > PER_ROW;
+  const chunks: string[][] = [];
+  for (let i = 0; i < hand.length; i += PER_ROW) chunks.push(hand.slice(i, i + PER_ROW));
+  const handRows = multiRow ? [...chunks].reverse() : [hand]; // base = 1ª fileira; excedente acima
   const handEl = (
     <div className="flex flex-col items-center">
       {handRows.map((row, ri) => {
         const mid = (row.length - 1) / 2;
         return (
-          <div key={ri} className="flex items-end justify-center" style={{ marginTop: ri > 0 ? -22 : 0 }}>
+          <div key={ri} className="flex items-end justify-center" style={{ marginTop: ri > 0 ? -20 : 0 }}>
             {row.map((c, i) => {
               const sel = selected.includes(c);
-              const ang = twoRows ? 0 : (i - mid) * 4.2;
-              const lift = twoRows ? 0 : Math.abs(i - mid) ** 2 * 0.5;
+              const ang = multiRow ? 0 : (i - mid) * 4.2;
+              const lift = multiRow ? 0 : Math.abs(i - mid) ** 2 * 0.5;
               return (
                 <div
                   key={c}
                   onClick={() => toggleCard(c)}
                   className="cursor-pointer"
-                  style={{ transform: `rotate(${ang}deg) translateY(${lift - (sel ? 16 : 0)}px)`, transformOrigin: "bottom center", marginLeft: i === 0 ? 0 : twoRows ? -14 : -18, zIndex: sel ? 50 : i }}
+                  style={{ transform: `rotate(${ang}deg) translateY(${lift - (sel ? 16 : 0)}px)`, transformOrigin: "bottom center", marginLeft: i === 0 ? 0 : multiRow ? -16 : -18, zIndex: sel ? 50 : i }}
                 >
-                  <Card card={c} size={twoRows ? "sm" : "md"} selected={sel} />
+                  <Card card={c} size={multiRow ? "sm" : "md"} selected={sel} />
                 </div>
               );
             })}
@@ -338,13 +340,11 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
 
           <div className="flex justify-center mb-1">{actionPanelEl}</div>
 
-          <div className="relative flex items-end justify-center min-h-[100px] pt-1">
-            {handEl}
-            <div className="absolute bottom-0 left-0 flex items-end gap-1.5">
-              <div ref={(el) => { seatRefs.current[me] = el; }}><Chip p={pMe} you /></div>
-              {orderBtns}
-            </div>
+          <div className="flex items-center justify-between px-1">
+            <div ref={(el) => { seatRefs.current[me] = el; }}><Chip p={pMe} you /></div>
+            {orderBtns}
           </div>
+          <div className="flex items-end justify-center pt-1 pb-1">{handEl}</div>
         </div>
       ) : (
         /* ====================== PAISAGEM ====================== */
