@@ -231,8 +231,10 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
   );
 
   const oppMeldsEl = <MeldZone melds={oppMelds} team={oppTeam} />;
+  // jogos da dupla selecionáveis durante toda a minha vez (play E draw):
+  // no draw, selecionar um jogo permite "Pegar lixo" encaixando a carta do topo nele
   const myMeldsEl = (
-    <MeldZone melds={myMelds} team={myTeam} selectable={myTurn && phase === "play"} selMeld={selMeld} onSelect={(id) => setSelMeld((s) => (s === id ? null : id))} />
+    <MeldZone melds={myMelds} team={myTeam} selectable={myTurn && phase !== "over"} selMeld={selMeld} onSelect={(id) => setSelMeld((s) => (s === id ? null : id))} />
   );
 
   const actionPanelEl = (
@@ -269,22 +271,36 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
     </div>
   );
 
-  const handEl = hand.map((c, i) => {
-    const mid = (hand.length - 1) / 2;
-    const ang = (i - mid) * 4.2;
-    const lift = Math.abs(i - mid) ** 2 * 0.5;
-    const sel = selected.includes(c);
-    return (
-      <div
-        key={c}
-        onClick={() => toggleCard(c)}
-        className="cursor-pointer"
-        style={{ transform: `rotate(${ang}deg) translateY(${lift - (sel ? 18 : 0)}px)`, transformOrigin: "bottom center", marginLeft: i === 0 ? 0 : -18, zIndex: sel ? 50 : i }}
-      >
-        <Card card={c} size="md" selected={sel} />
-      </div>
-    );
-  });
+  // mão: leque numa fileira; com muitas cartas (>13, ex.: pegou o lixo), 2 fileiras
+  const twoRows = hand.length > 13;
+  const splitAt = Math.ceil(hand.length / 2);
+  const handRows = twoRows ? [hand.slice(0, splitAt), hand.slice(splitAt)] : [hand];
+  const handEl = (
+    <div className="flex flex-col items-center">
+      {handRows.map((row, ri) => {
+        const mid = (row.length - 1) / 2;
+        return (
+          <div key={ri} className="flex items-end justify-center" style={{ marginTop: ri > 0 ? -22 : 0 }}>
+            {row.map((c, i) => {
+              const sel = selected.includes(c);
+              const ang = twoRows ? 0 : (i - mid) * 4.2;
+              const lift = twoRows ? 0 : Math.abs(i - mid) ** 2 * 0.5;
+              return (
+                <div
+                  key={c}
+                  onClick={() => toggleCard(c)}
+                  className="cursor-pointer"
+                  style={{ transform: `rotate(${ang}deg) translateY(${lift - (sel ? 16 : 0)}px)`, transformOrigin: "bottom center", marginLeft: i === 0 ? 0 : twoRows ? -14 : -18, zIndex: sel ? 50 : i }}
+                >
+                  <Card card={c} size={twoRows ? "sm" : "md"} selected={sel} />
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 overflow-hidden text-white" style={{ background: OUTER, backgroundColor: "#0a1f15", fontFamily: "Manrope, system-ui, sans-serif" }}>
@@ -322,7 +338,7 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
 
           <div className="flex justify-center mb-1">{actionPanelEl}</div>
 
-          <div className="relative flex items-end justify-center h-[96px]">
+          <div className="relative flex items-end justify-center min-h-[100px] pt-1">
             {handEl}
             <div className="absolute bottom-0 left-0 flex items-end gap-1.5">
               <div ref={(el) => { seatRefs.current[me] = el; }}><Chip p={pMe} you /></div>
@@ -364,7 +380,7 @@ export default function GameBoard({ roomId, code }: { roomId: string; code: stri
             {orderBtns}
           </div>
 
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-end justify-center h-[80px]">{handEl}</div>
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-end justify-center">{handEl}</div>
         </div>
       )}
 
